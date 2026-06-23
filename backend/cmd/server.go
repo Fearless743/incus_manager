@@ -33,7 +33,7 @@ func main() {
 
 	go hub.Run()
 
-	h := handler.NewHandler(authService, userService, hostService, instanceService, sharedService, ipManager, hub)
+	h := handler.NewHandler(authService, userService, hostService, instanceService, sharedService, ipManager)
 
 	router := http.NewServeMux()
 	router.Handle("/", middleware.CORSMiddleware()(h.RegisterRoutes()))
