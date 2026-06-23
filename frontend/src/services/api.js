@@ -34,11 +34,19 @@ export const hostAPI = {
 export const instanceAPI = {
   create: (config) => api.post('/instances', config),
   getAll: () => api.get('/instances'),
+  delete: (id) => api.delete(`/instances/${id}`),
+  start: (id) => api.post(`/instances/${id}/start`),
+  stop: (id) => api.post(`/instances/${id}/stop`),
+  getImages: () => api.get('/instances/images'),
 };
 
 export const shareAPI = {
-  share: (instanceId, userId, expiresAt) => api.post('/share', { instanceId, userId, expiresAt }),
-  revoke: (instanceId, userId) => api.delete('/share', { data: { instanceId, userId } }),
+  share: (instanceId, userId, expiresAt) => api.post('/share', { instance_id: instanceId, user_id: userId, expires_at: expiresAt }),
+  revoke: (instanceId, userId) => api.delete(`/share/${instanceId}/${userId}`),
+};
+
+export const statsAPI = {
+  get: () => api.get('/stats'),
 };
 
 export default api;
