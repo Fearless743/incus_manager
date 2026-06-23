@@ -37,6 +37,9 @@ const Layout = ({ children }) => {
           <a href="/instances" style={{ display: 'block', padding: 10, color: 'white', textDecoration: 'none' }}>
             {sidebarOpen ? 'Instances' : '📦'}
           </a>
+          <a href="/shared" style={{ display: 'block', padding: 10, color: 'white', textDecoration: 'none' }}>
+            {sidebarOpen ? 'Sharing' : '🔗'}
+          </a>
         </nav>
 
         <div style={{ position: 'absolute', bottom: 20, left: 10 }}>
