@@ -3,7 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
-	"time"
+	"strconv"
 
 	"incus-manager/internal/middleware"
 	"incus-manager/internal/model"
@@ -16,16 +16,18 @@ type Handler struct {
 	hostService     *service.HostService
 	instanceService *service.InstanceService
 	sharedService   *service.SharedService
+	ipManager       *service.IPManager
 }
 
 func NewHandler(auth *service.AuthService, user *service.UserService, host *service.HostService, 
-	instance *service.InstanceService, shared *service.SharedService) *Handler {
+	instance *service.InstanceService, shared *service.SharedService, ipMgr *service.IPManager) *Handler {
 	return &Handler{
 		authService:     auth,
 		userService:     user,
 		hostService:     host,
 		instanceService: instance,
 		sharedService:   shared,
+		ipManager:       ipMgr,
 	}
 }
 
@@ -37,19 +39,19 @@ func (h *Handler) RegisterRoutes() http.Handler {
 	mux.HandleFunc("POST /api/users", h.createUser)
 
 	// Protected routes
-	protected := middleware.Authenticate(h.authService)(mux)
+	protected := middleware.Authenticate(h.authService)
 
 	protected.HandleFunc("POST /api/hosts", h.addHost)
 	protected.HandleFunc("GET /api/hosts", h.getHosts)
 	protected.HandleFunc("GET /api/instances", h.getInstances)
 	protected.HandleFunc("POST /api/instances", h.createInstance)
 	protected.HandleFunc("DELETE /api/instances/{id}", h.deleteInstance)
-	protected.HandleFunc("POST /api/share", h.shareInstance)
-	protected.HandleFunc("DELETE /api/share/{instanceId}/{userId}", h.revokeShare)
-	protected.HandleFunc("GET /api/instances/{id}/logs", h.getInstanceLogs)
 	protected.HandleFunc("POST /api/instances/{id}/start", h.startInstance)
 	protected.HandleFunc("POST /api/instances/{id}/stop", h.stopInstance)
+	protected.HandleFunc("POST /api/share", h.shareInstance)
+	protected.HandleFunc("DELETE /api/share/{instanceId}/{userId}", h.revokeShare)
 	protected.HandleFunc("GET /api/instances/images", h.getImages)
+	protected.HandleFunc("GET /api/stats", h.getStats)
 
 	return protected
 }
@@ -154,9 +156,9 @@ func (h *Handler) createInstance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req.ExpiryDate = time.Now().Add(30 * 24 * time.Hour) // Default 30 days
+	req.ExpiryDate = req.ExpiryDate.UTC()
 
-	instance, err := h.instanceService.CreateInstance(req, req.HostID, userID)
+	instance, err := h.instanceService.CreateInstance(req, userID)
 	if err != nil {
 		writeError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -167,15 +169,56 @@ func (h *Handler) createInstance(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) deleteInstance(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r)
-	instanceID := uint(mux.Vars(r)["id"])
+	instanceIDStr := r.PathValue("id")
+	instanceID, err := strconv.ParseUint(instanceIDStr, 10, 32)
+	if err != nil {
+		writeError(w, "Invalid instance ID", http.StatusBadRequest)
+		return
+	}
 
-	err := h.instanceService.DeleteInstance(instanceID, userID)
+	err = h.instanceService.DeleteInstance(uint(instanceID), userID)
 	if err != nil {
 		writeError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	writeJSON(w, map[string]string{"message": "Instance deleted"})
+}
+
+func (h *Handler) startInstance(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r)
+	instanceIDStr := r.PathValue("id")
+	instanceID, err := strconv.ParseUint(instanceIDStr, 10, 32)
+	if err != nil {
+		writeError(w, "Invalid instance ID", http.StatusBadRequest)
+		return
+	}
+
+	err = h.instanceService.StartInstance(uint(instanceID), userID)
+	if err != nil {
+		writeError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, map[string]string{"message": "Instance started"})
+}
+
+func (h *Handler) stopInstance(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r)
+	instanceIDStr := r.PathValue("id")
+	instanceID, err := strconv.ParseUint(instanceIDStr, 10, 32)
+	if err != nil {
+		writeError(w, "Invalid instance ID", http.StatusBadRequest)
+		return
+	}
+
+	err = h.instanceService.StopInstance(uint(instanceID), userID)
+	if err != nil {
+		writeError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, map[string]string{"message": "Instance stopped"})
 }
 
 func (h *Handler) shareInstance(w http.ResponseWriter, r *http.Request) {
@@ -209,11 +252,22 @@ func (h *Handler) shareInstance(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) revokeShare(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r)
-	vars := mux.Vars(r)
-	instanceID := uint(vars["instanceId"])
-	sharedWithUserID := uint(vars["userId"])
+	instanceIDStr := r.PathValue("instanceId")
+	userIDStr := r.PathValue("userId")
 
-	err := h.sharedService.RevokeShare(instanceID, sharedWithUserID)
+	instanceID, err := strconv.ParseUint(instanceIDStr, 10, 32)
+	if err != nil {
+		writeError(w, "Invalid instance ID", http.StatusBadRequest)
+		return
+	}
+
+	sharedWithUserID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		writeError(w, "Invalid user ID", http.StatusBadRequest)
+		return
+	}
+
+	err = h.sharedService.RevokeShare(uint(instanceID), uint(sharedWithUserID))
 	if err != nil {
 		writeError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -222,24 +276,23 @@ func (h *Handler) revokeShare(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]string{"message": "Share revoked"})
 }
 
-func (h *Handler) getInstanceLogs(w http.ResponseWriter, r *http.Request) {
-	// TODO: Implement instance logs
-	writeJSON(w, map[string]string{"logs": "No logs available"})
-}
-
-func (h *Handler) startInstance(w http.ResponseWriter, r *http.Request) {
-	// TODO: Implement start instance
-	writeJSON(w, map[string]string{"message": "Instance started"})
-}
-
-func (h *Handler) stopInstance(w http.ResponseWriter, r *http.Request) {
-	// TODO: Implement stop instance
-	writeJSON(w, map[string]string{"message": "Instance stopped"})
-}
-
 func (h *Handler) getImages(w http.ResponseWriter, r *http.Request) {
 	// TODO: Get available images from Incus
-	writeJSON(w, []string{})
+	writeJSON(w, []string{"ubuntu/22.04", "ubuntu/20.04", "centos/8", "centos/9"})
+}
+
+func (h *Handler) getStats(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r)
+
+	instances, _ := h.instanceService.GetInstancesByUser(userID)
+	hosts, _ := h.hostService.GetHostsByUser(userID)
+
+	writeJSON(w, map[string]interface{}{
+		"total_hosts":        len(hosts),
+		"total_instances":    len(instances),
+		"running_instances":  0,
+		"shared_instances":   0,
+	})
 }
 
 func writeJSON(w http.ResponseWriter, data interface{}, statusCode ...int) {
