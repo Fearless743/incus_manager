@@ -23,6 +23,13 @@ func (s *SharedService) ShareInstance(instanceID, sharedWithUserID uint, expires
 		return errors.New("instance not found")
 	}
 
+	// Check if already shared
+	for _, uid := range instance.SharedWith {
+		if uid == sharedWithUserID {
+			return errors.New("instance already shared with this user")
+		}
+	}
+
 	// Add user to shared_with list
 	instance.SharedWith = append(instance.SharedWith, sharedWithUserID)
 	instance.ExpiryDate = expiresAt
@@ -54,4 +61,12 @@ func (s *SharedService) RevokeShare(instanceID, sharedWithUserID uint) error {
 	}
 
 	return nil
+}
+
+func (s *SharedService) GetSharedInstances(userID uint) ([]model.Instance, error) {
+	var instances []model.Instance
+	if err := s.DB.Where("? IN shared_with", userID).Find(&instances).Error; err != nil {
+		return nil, errors.New("failed to get shared instances")
+	}
+	return instances, nil
 }
