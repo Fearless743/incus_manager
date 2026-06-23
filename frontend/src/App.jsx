@@ -2,6 +2,9 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
+import HostsPage from './pages/HostsPage';
+import InstancesPage from './pages/InstancesPage';
+import Layout from './components/Layout';
 
 const ProtectedRoute = ({ children }) => {
   const { token } = useAuth();
@@ -16,7 +19,23 @@ const AppRoutes = () => {
         path="/dashboard"
         element={
           <ProtectedRoute>
-            <DashboardPage />
+            <Layout><DashboardPage /></Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/hosts"
+        element={
+          <ProtectedRoute>
+            <Layout><HostsPage /></Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/instances"
+        element={
+          <ProtectedRoute>
+            <Layout><InstancesPage /></Layout>
           </ProtectedRoute>
         }
       />
