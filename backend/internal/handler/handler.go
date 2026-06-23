@@ -40,21 +40,20 @@ func (h *Handler) RegisterRoutes() http.Handler {
 	mux.HandleFunc("POST /api/users", h.createUser)
 
 	// Protected routes
-	protected := middleware.Authenticate(h.authService)
+	auth := middleware.Authenticate(h.authService)
+	mux.HandleFunc("POST /api/hosts", auth(h.addHost))
+	mux.HandleFunc("GET /api/hosts", auth(h.getHosts))
+	mux.HandleFunc("GET /api/instances", auth(h.getInstances))
+	mux.HandleFunc("POST /api/instances", auth(h.createInstance))
+	mux.HandleFunc("DELETE /api/instances/", auth(h.deleteInstance))
+	mux.HandleFunc("POST /api/instances/", auth(h.startInstance))
+	mux.HandleFunc("POST /api/instances/", auth(h.stopInstance))
+	mux.HandleFunc("POST /api/share", auth(h.shareInstance))
+	mux.HandleFunc("DELETE /api/share/", auth(h.revokeShare))
+	mux.HandleFunc("GET /api/instances/images", auth(h.getImages))
+	mux.HandleFunc("GET /api/stats", auth(h.getStats))
 
-	protected.HandleFunc("POST /api/hosts", h.addHost)
-	protected.HandleFunc("GET /api/hosts", h.getHosts)
-	protected.HandleFunc("GET /api/instances", h.getInstances)
-	protected.HandleFunc("POST /api/instances", h.createInstance)
-	protected.HandleFunc("DELETE /api/instances/{id}", h.deleteInstance)
-	protected.HandleFunc("POST /api/instances/{id}/start", h.startInstance)
-	protected.HandleFunc("POST /api/instances/{id}/stop", h.stopInstance)
-	protected.HandleFunc("POST /api/share", h.shareInstance)
-	protected.HandleFunc("DELETE /api/share/{instanceId}/{userId}", h.revokeShare)
-	protected.HandleFunc("GET /api/instances/images", h.getImages)
-	protected.HandleFunc("GET /api/stats", h.getStats)
-
-	return protected
+	return mux
 }
 
 func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
@@ -157,7 +156,9 @@ func (h *Handler) createInstance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req.ExpiryDate = req.ExpiryDate.UTC()
+	if req.ExpiryDate.IsZero() {
+		req.ExpiryDate = time.Now().Add(30 * 24 * time.Hour)
+	}
 
 	instance, err := h.instanceService.CreateInstance(req, userID)
 	if err != nil {
@@ -170,8 +171,7 @@ func (h *Handler) createInstance(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) deleteInstance(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r)
-	instanceIDStr := r.PathValue("id")
-	instanceID, err := strconv.ParseUint(instanceIDStr, 10, 32)
+	instanceID, err := strconv.ParseUint(r.PathValue("id"), 10, 32)
 	if err != nil {
 		writeError(w, "Invalid instance ID", http.StatusBadRequest)
 		return
@@ -188,8 +188,7 @@ func (h *Handler) deleteInstance(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) startInstance(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r)
-	instanceIDStr := r.PathValue("id")
-	instanceID, err := strconv.ParseUint(instanceIDStr, 10, 32)
+	instanceID, err := strconv.ParseUint(r.PathValue("id"), 10, 32)
 	if err != nil {
 		writeError(w, "Invalid instance ID", http.StatusBadRequest)
 		return
@@ -206,8 +205,7 @@ func (h *Handler) startInstance(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) stopInstance(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r)
-	instanceIDStr := r.PathValue("id")
-	instanceID, err := strconv.ParseUint(instanceIDStr, 10, 32)
+	instanceID, err := strconv.ParseUint(r.PathValue("id"), 10, 32)
 	if err != nil {
 		writeError(w, "Invalid instance ID", http.StatusBadRequest)
 		return
@@ -223,8 +221,6 @@ func (h *Handler) stopInstance(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) shareInstance(w http.ResponseWriter, r *http.Request) {
-	userID := middleware.GetUserID(r)
-
 	var req struct {
 		InstanceID uint   `json:"instance_id"`
 		UserID     uint   `json:"user_id"`
@@ -252,17 +248,13 @@ func (h *Handler) shareInstance(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) revokeShare(w http.ResponseWriter, r *http.Request) {
-	userID := middleware.GetUserID(r)
-	instanceIDStr := r.PathValue("instanceId")
-	userIDStr := r.PathValue("userId")
-
-	instanceID, err := strconv.ParseUint(instanceIDStr, 10, 32)
+	instanceID, err := strconv.ParseUint(r.PathValue("instanceId"), 10, 32)
 	if err != nil {
 		writeError(w, "Invalid instance ID", http.StatusBadRequest)
 		return
 	}
 
-	sharedWithUserID, err := strconv.ParseUint(userIDStr, 10, 32)
+	sharedWithUserID, err := strconv.ParseUint(r.PathValue("userId"), 10, 32)
 	if err != nil {
 		writeError(w, "Invalid user ID", http.StatusBadRequest)
 		return
@@ -278,7 +270,6 @@ func (h *Handler) revokeShare(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) getImages(w http.ResponseWriter, r *http.Request) {
-	// TODO: Get available images from Incus
 	writeJSON(w, []string{"ubuntu/22.04", "ubuntu/20.04", "centos/8", "centos/9"})
 }
 

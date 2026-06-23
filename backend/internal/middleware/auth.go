@@ -15,9 +15,9 @@ const UserIDContextKey ContextKey = "userID"
 const UsernameContextKey ContextKey = "username"
 const RoleContextKey ContextKey = "role"
 
-func Authenticate(authService *service.AuthService) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func Authenticate(authService *service.AuthService) func(http.HandlerFunc) http.HandlerFunc {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
 			authHeader := r.Header.Get("Authorization")
 			if authHeader == "" {
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -25,7 +25,7 @@ func Authenticate(authService *service.AuthService) func(http.Handler) http.Hand
 			}
 
 			tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-			
+
 			token, err := authService.ValidateToken(tokenString)
 			if err != nil || !token.Valid {
 				http.Error(w, "Invalid token", http.StatusUnauthorized)
@@ -38,18 +38,16 @@ func Authenticate(authService *service.AuthService) func(http.Handler) http.Hand
 				return
 			}
 
-			// Extract claims
 			userID := uint(claims["user_id"].(float64))
 			username := claims["username"].(string)
 			role := claims["role"].(string)
 
-			// Add to context
 			ctx := context.WithValue(r.Context(), UserIDContextKey, userID)
 			ctx = context.WithValue(ctx, UsernameContextKey, username)
 			ctx = context.WithValue(ctx, RoleContextKey, role)
 
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
+			next(w, r.WithContext(ctx))
+		}
 	}
 }
 

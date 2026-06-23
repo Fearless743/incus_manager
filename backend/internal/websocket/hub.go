@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"sync"
-	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -22,7 +21,7 @@ type Client struct {
 }
 
 type Hub struct {
-	clients    map[string]*Client
+	clients    map[*Client]bool
 	register   chan *Client
 	unregister chan *Client
 	broadcast  chan []byte
@@ -31,7 +30,7 @@ type Hub struct {
 
 func NewHub() *Hub {
 	return &Hub{
-		clients:    make(map[string]*Client),
+		clients:    make(map[*Client]bool),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
 		broadcast:  make(chan []byte),
@@ -43,12 +42,12 @@ func (h *Hub) Run() {
 		select {
 		case client := <-h.register:
 			h.mu.Lock()
-			h.clients[client.send] = client
+			h.clients[client] = true
 			h.mu.Unlock()
 		case client := <-h.unregister:
 			h.mu.Lock()
-			if _, ok := h.clients[client.conn]; ok {
-				delete(h.clients, client.conn)
+			if _, ok := h.clients[client]; ok {
+				delete(h.clients, client)
 				close(client.send)
 			}
 			h.mu.Unlock()
@@ -59,7 +58,7 @@ func (h *Hub) Run() {
 				case client.send <- message:
 				default:
 					close(client.send)
-					delete(h.clients, client.conn)
+					delete(h.clients, client)
 				}
 			}
 			h.mu.Unlock()
@@ -124,22 +123,8 @@ func (h *Hub) readPump(client *Client) {
 			break
 		}
 
-		// Process incoming messages
 		fmt.Printf("Received message: %s\n", string(message))
 	}
-}
-
-func (h *Hub) SendToClient(instanceID string, message []byte) {
-	h.mu.Lock()
-	if client, ok := h.clients[instanceID]; ok {
-		select {
-		case client.send <- message:
-		default:
-			close(client.send)
-			delete(h.clients, instanceID)
-		}
-	}
-	h.mu.Unlock()
 }
 
 func (h *Hub) BroadcastToAll(message []byte) {

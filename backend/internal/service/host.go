@@ -2,7 +2,7 @@ package service
 
 import (
 	"errors"
-	"time"
+	"fmt"
 
 	"gorm.io/gorm"
 	"incus-manager/internal/model"
@@ -66,5 +66,5 @@ func (s *HostService) DeleteHost(id, userID uint) error {
 }
 
 func generateProjectName(userID uint, hostName string) string {
-	return "host-" + hostName + "-" + string(rune(userID))
+	return fmt.Sprintf("host-%s-%d", hostName, userID)
 }

@@ -32,7 +32,6 @@ func (s *SharedService) ShareInstance(instanceID, sharedWithUserID uint, expires
 
 	// Add user to shared_with list
 	instance.SharedWith = append(instance.SharedWith, sharedWithUserID)
-	instance.ExpiryDate = expiresAt
 
 	if err := s.DB.Save(&instance).Error; err != nil {
 		return errors.New("failed to share instance")
@@ -65,7 +64,7 @@ func (s *SharedService) RevokeShare(instanceID, sharedWithUserID uint) error {
 
 func (s *SharedService) GetSharedInstances(userID uint) ([]model.Instance, error) {
 	var instances []model.Instance
-	if err := s.DB.Where("? IN shared_with", userID).Find(&instances).Error; err != nil {
+	if err := s.DB.Where("shared_with @> ARRAY[?]", userID).Find(&instances).Error; err != nil {
 		return nil, errors.New("failed to get shared instances")
 	}
 	return instances, nil

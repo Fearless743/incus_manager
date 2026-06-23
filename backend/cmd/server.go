@@ -15,20 +15,20 @@ import (
 )
 
 func main() {
-	cfg := loadConfig()
-	
+	cfg := config.Load()
+
 	db, err := initDatabase(cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	incusService := service.NewIncusService(cfg.IncusURL, cfg.IncusCert, "")
+	incusService := service.NewIncusService(cfg.IncusURL, "", "")
 	authService := service.NewAuthService(db, cfg.JWTSecret)
 	userService := service.NewUserService(db)
 	hostService := service.NewHostService(db, incusService)
-	instanceService := service.NewInstanceService(db, incusService)
-	sharedService := service.NewSharedService(db, incusService)
 	ipManager := service.NewIPManager(db)
+	instanceService := service.NewInstanceService(db, incusService, ipManager)
+	sharedService := service.NewSharedService(db, incusService)
 	hub := websocket.NewHub()
 
 	go hub.Run()
@@ -36,27 +36,27 @@ func main() {
 	h := handler.NewHandler(authService, userService, hostService, instanceService, sharedService, ipManager)
 
 	router := http.NewServeMux()
-	router.Handle("/", middleware.CORSMiddleware()(h.RegisterRoutes()))
+	router.Handle("/", middleware.CORSMiddleware()(middleware.LoggingMiddleware(h.RegisterRoutes())))
+	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"healthy","service":"incus-manager"}`))
+	})
 	router.HandleFunc("/ws", hub.ServeHTTP)
 
 	port := os.Getenv("PORT")
+	if port == "" {
+		port = cfg.Port
+	}
 	if port == "" {
 		port = "8080"
 	}
 
 	log.Printf("Server starting on port %s", port)
 	log.Printf("WebSocket endpoint: ws://localhost:%s/ws", port)
-	
+
 	if err := http.ListenAndServe(":"+port, router); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
-	}
-}
-
-func loadConfig() *config.Config {
-	return &config.Config{
-		DatabaseURL: getEnv("DATABASE_URL", "postgres://user:pass@localhost:5432/incus_manager?sslmode=disable"),
-		IncusURL:    getEnv("INCUS_URL", "https://localhost:8443"),
-		JWTSecret:   getEnv("JWT_SECRET", "change-this-secret-in-production"),
 	}
 }
 
@@ -75,11 +75,4 @@ func initDatabase(dsn string) (*gorm.DB, error) {
 	sqlDB.SetMaxOpenConns(100)
 
 	return db, nil
-}
-
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
 }
