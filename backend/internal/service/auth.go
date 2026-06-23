@@ -27,8 +27,7 @@ func (s *AuthService) Login(username, password string) (*model.User, string, err
 		return nil, "", errors.New("invalid credentials")
 	}
 
-	// TODO: Verify password hash with bcrypt
-	if user.ID == 0 {
+	if !s.verifyPassword(user.PasswordHash, password) {
 		return nil, "", errors.New("invalid credentials")
 	}
 
@@ -37,14 +36,16 @@ func (s *AuthService) Login(username, password string) (*model.User, string, err
 		return nil, "", err
 	}
 
+	// Return user without password hash
+	user.PasswordHash = ""
 	return &user, token, nil
 }
 
 func (s *AuthService) GenerateToken(user *model.User) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id":   user.ID,
-		"username":  user.Username,
-		"role":      user.Role,
+		"user_id":    user.ID,
+		"username":   user.Username,
+		"role":       user.Role,
 		"expires_at": time.Now().Add(24 * time.Hour).Unix(),
 	})
 
@@ -58,4 +59,9 @@ func (s *AuthService) ValidateToken(tokenString string) (*jwt.Token, error) {
 		}
 		return s.JWTSecret, nil
 	})
+}
+
+func (s *AuthService) verifyPassword(hashedPassword, password string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
+	return err == nil
 }
