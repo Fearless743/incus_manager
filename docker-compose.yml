@@ -2,33 +2,54 @@ version: '3.8'
 
 services:
   postgres:
-    image: postgres:15
+    image: postgres:15-alpine
     environment:
       POSTGRES_DB: incus_manager
       POSTGRES_USER: user
       POSTGRES_PASSWORD: pass
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d incus_manager"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   backend:
-    build: ./backend
-    ports:
-      - "8080:8080"
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     environment:
       DATABASE_URL: postgres://user:pass@postgres:5432/incus_manager?sslmode=disable
-      INCUS_URL: https://incus-server:8443
-      JWT_SECRET: your-secret-key-here
+      INCUS_URL: http://host.docker.internal:8443
+      JWT_SECRET: change-me-in-production
+      PORT: "8080"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    expose:
+      - "8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    expose:
+      - "3000"
+
+  nginx:
+    image: nginx:alpine
     ports:
-      - "3000:3000"
+      - "80:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - backend
+      - frontend
 
 volumes:
   postgres_data:
