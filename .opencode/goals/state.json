@@ -7,10 +7,10 @@
       "objective": "初始化git，每个小更改都要提交commit，我希望制作一个incus的管理面板前端使用react 后端使用go，使用incus的REST API进行通信，并且使用incus自带的project进行区分是否为这个管理面板创建的服务器,并且根据特定的规则自动为其分配映射ip，需要支持多用户，每个用户可以添加无限个宿主机进行管理，并且各个用户的宿主机不会互相串，用户通过宿主机切割的实例，支持多个系统镜像自定义开放端口数量自定义配置限制以及上下行流量限制但上下行流量也可以无限制，切割出来的实例可以共享给其他用户，并且可以设置过期时间，直到制作出管理面板的前后端且能够通过incus的rest api进行管理才算完成任务",
       "status": "active",
       "createdAt": 1782202521810,
-      "updatedAt": 1782204713145,
-      "tokensUsed": 1731737,
-      "timeUsedMs": 2191335,
-      "activeSince": 1782204713145,
+      "updatedAt": 1782204762539,
+      "tokensUsed": 1813062,
+      "timeUsedMs": 2240729,
+      "activeSince": 1782204762539,
       "accountedAssistantTokens": {
         "msg_ef38c5918001MfAnhVpeN3wKkW": 11918,
         "msg_ef38cba33001Zx0aHz4WhroML3": 12049,
@@ -79,9 +79,11 @@
         "msg_ef3ab028d001QSLHHcsPWZ1Zls": 39309,
         "msg_ef3ab5e5e001FILEZAE9A4n2Py": 39410,
         "msg_ef3abbaff0015I4CU31Eb9HCXn": 39767,
-        "msg_ef3ad87ed001jkdt7wuY43E4v0": 40420
+        "msg_ef3ad87ed001jkdt7wuY43E4v0": 40420,
+        "msg_ef3adc8ad0012qOpL3LBdqpTje": 40517,
+        "msg_ef3ae58070010Sgoyz4lg3h9Jj": 40808
       },
-      "lastAssistantMessageID": "msg_ef3adc8ad0012qOpL3LBdqpTje"
+      "lastAssistantMessageID": "msg_ef3ae8982001hoVOAFibVQ6tFL"
     }
   }
 }
