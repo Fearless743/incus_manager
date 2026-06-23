@@ -1,0 +1,38 @@
+# Binaries
+bin/
+tmp/
+**/*cli-release*/
+vendor/
+
+# Testing
+/coverage
+
+# Misc
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Go
+/incus-manager
+*.exe
+*.exe~
+*.dll
+*.so
+*.obj
+*.pem
+*.p10
+*.p7b
+*.p7r
+*.csr
+*.cer
+*.pfx
+*.srl
+*.txt
