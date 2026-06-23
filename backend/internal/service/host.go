@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"time"
 
 	"gorm.io/gorm"
 	"incus-manager/internal/model"
@@ -51,6 +52,19 @@ func (s *HostService) GetHostByID(id uint) (*model.Host, error) {
 	return &host, nil
 }
 
+func (s *HostService) DeleteHost(id, userID uint) error {
+	var host model.Host
+	if err := s.DB.First(&host, id).Error; err != nil {
+		return errors.New("host not found")
+	}
+
+	if host.UserID != userID {
+		return errors.New("access denied")
+	}
+
+	return s.DB.Delete(&host).Error
+}
+
 func generateProjectName(userID uint, hostName string) string {
-	return "host_" + hostName + "_" + string(rune(userID))
+	return "host-" + hostName + "-" + string(rune(userID))
 }
