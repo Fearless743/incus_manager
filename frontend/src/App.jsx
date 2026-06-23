@@ -4,6 +4,7 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import HostsPage from './pages/HostsPage';
 import InstancesPage from './pages/InstancesPage';
+import SharedPage from './pages/SharedPage';
 import Layout from './components/Layout';
 
 const ProtectedRoute = ({ children }) => {
@@ -36,6 +37,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Layout><InstancesPage /></Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/shared"
+        element={
+          <ProtectedRoute>
+            <Layout><SharedPage /></Layout>
           </ProtectedRoute>
         }
       />
