@@ -1,60 +1,69 @@
 import { useState, useEffect } from 'react';
-import { hostAPI, instanceAPI } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const DashboardPage = () => {
-  const [hosts, setHosts] = useState([]);
-  const [instances, setInstances] = useState([]);
+  const { user } = useAuth();
+  const [stats, setStats] = useState({
+    totalHosts: 0,
+    totalInstances: 0,
+    runningInstances: 0,
+    sharedInstances: 0,
+  });
 
   useEffect(() => {
-    loadHosts();
-    loadInstances();
+    loadStats();
   }, []);
 
-  const loadHosts = async () => {
-    try {
-      const response = await hostAPI.getAll();
-      setHosts(response.data);
-    } catch (err) {
-      console.error('Failed to load hosts:', err);
-    }
-  };
-
-  const loadInstances = async () => {
-    try {
-      const response = await instanceAPI.getAll();
-      setInstances(response.data);
-    } catch (err) {
-      console.error('Failed to load instances:', err);
-    }
+  const loadStats = async () => {
+    // TODO: Implement stats API call
+    setStats({
+      totalHosts: 0,
+      totalInstances: 0,
+      runningInstances: 0,
+      sharedInstances: 0,
+    });
   };
 
   return (
     <div style={{ padding: 20 }}>
-      <h1>Dashboard</h1>
+      <h1>Welcome, {user?.username}!</h1>
       
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-        <div>
-          <h2>Hosts ({hosts.length})</h2>
-          <ul>
-            {hosts.map(host => (
-              <li key={host.id}>{host.name} - {host.address}</li>
-            ))}
-          </ul>
-        </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, marginTop: 30 }}>
+        <StatCard title="Total Hosts" value={stats.totalHosts} />
+        <StatCard title="Total Instances" value={stats.totalInstances} />
+        <StatCard title="Running" value={stats.runningInstances} />
+        <StatCard title="Shared" value={stats.sharedInstances} />
+      </div>
 
-        <div>
-          <h2>Instances ({instances.length})</h2>
-          <ul>
-            {instances.map(instance => (
-              <li key={instance.id}>
-                {instance.name} - {instance.status} (CPU: {instance.cpu}, Memory: {instance.memory}MB)
-              </li>
-            ))}
-          </ul>
+      <div style={{ marginTop: 40 }}>
+        <h2>Quick Actions</h2>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <a href="/hosts" style={{ padding: '10px 20px', backgroundColor: '#007bff', color: 'white', textDecoration: 'none', borderRadius: 5 }}>
+            Manage Hosts
+          </a>
+          <a href="/instances" style={{ padding: '10px 20px', backgroundColor: '#28a745', color: 'white', textDecoration: 'none', borderRadius: 5 }}>
+            Create Instance
+          </a>
+          <a href="/shared" style={{ padding: '10px 20px', backgroundColor: '#ffc107', color: 'black', textDecoration: 'none', borderRadius: 5 }}>
+            Share Instances
+          </a>
         </div>
       </div>
     </div>
   );
 };
+
+const StatCard = ({ title, value }) => (
+  <div style={{
+    padding: 20,
+    backgroundColor: 'white',
+    borderRadius: 8,
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+    textAlign: 'center'
+  }}>
+    <h3 style={{ margin: 0, color: '#666' }}>{title}</h3>
+    <p style={{ fontSize: 32, fontWeight: 'bold', margin: '10px 0' }}>{value}</p>
+  </div>
+);
 
 export default DashboardPage;

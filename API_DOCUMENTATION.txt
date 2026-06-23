@@ -1,0 +1,57 @@
+* Incus Manager API Documentation
+
+Base URL: http://localhost:8080/api
+
+== Authentication ==
+
+POST /login
+  Body: { "username": "string", "password": "string" }
+  Response: { "user": {...}, "token": "string" }
+
+== Users ==
+
+POST /users
+  Body: { "username": "string", "email": "string", "password": "string" }
+  Response: { user object }
+
+== Hosts ==
+
+POST /hosts
+  Headers: Authorization: Bearer {token}
+  Body: { "name": "string", "address": "string", "certificate": "string" }
+  Response: { host object }
+
+GET /hosts
+  Headers: Authorization: Bearer {token}
+  Response: [ { host objects } ]
+
+== Instances ==
+
+POST /instances
+  Headers: Authorization: Bearer {token}
+  Body: { "name": "string", "image": "string", "cpu": int, "memory": int, "disk": int, "host_id": int }
+  Response: { instance object }
+
+GET /instances
+  Headers: Authorization: Bearer {token}
+  Response: [ { instance objects } ]
+
+DELETE /instances/{id}
+  Headers: Authorization: Bearer {token}
+  Response: { "message": "Instance deleted" }
+
+== Sharing ==
+
+POST /share
+  Headers: Authorization: Bearer {token}
+  Body: { "instance_id": int, "user_id": int, "expires_at": "ISO8601" }
+  Response: { "message": "Instance shared" }
+
+DELETE /share/{instanceId}/{userId}
+  Headers: Authorization: Bearer {token}
+  Response: { "message": "Share revoked" }
+
+== WebSocket ==
+
+ws://localhost:8080/ws
+  Connect for real-time instance updates
