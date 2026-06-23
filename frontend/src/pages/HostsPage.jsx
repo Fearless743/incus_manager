@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { hostAPI } from '../services/api';
 
 const HostsPage = () => {
@@ -7,6 +7,10 @@ const HostsPage = () => {
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
   const [certificate, setCertificate] = useState('');
+
+  useEffect(() => {
+    loadHosts();
+  }, []);
 
   const loadHosts = async () => {
     try {
@@ -35,37 +39,63 @@ const HostsPage = () => {
     <div style={{ padding: 20 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
         <h1>Hosts</h1>
-        <button onClick={() => setShowForm(!showForm)}>Add Host</button>
+        <button 
+          onClick={() => setShowForm(!showForm)}
+          style={{ padding: '10px 20px', backgroundColor: '#4caf50', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+        >
+          Add Host
+        </button>
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} style={{ marginBottom: 20, padding: 20, border: '1px solid #ccc' }}>
+        <form onSubmit={handleSubmit} style={{ marginBottom: 20, padding: 20, border: '1px solid #ccc', borderRadius: 8, backgroundColor: '#f9f9f9' }}>
+          <h3 style={{ marginTop: 0 }}>New Host</h3>
           <div style={{ marginBottom: 10 }}>
             <label>Name:</label>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} required />
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)} required style={{ width: '100%', padding: 8, border: '1px solid #ddd', borderRadius: 4, boxSizing: 'border-box' }} />
           </div>
           <div style={{ marginBottom: 10 }}>
-            <label>Address:</label>
-            <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} required />
+            <label>Address (e.g., https://192.168.1.100:8443):</label>
+            <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} required style={{ width: '100%', padding: 8, border: '1px solid #ddd', borderRadius: 4, boxSizing: 'border-box' }} />
           </div>
           <div style={{ marginBottom: 10 }}>
-            <label>Certificate:</label>
-            <textarea value={certificate} onChange={(e) => setCertificate(e.target.value)} required />
+            <label>Client Certificate (PEM format):</label>
+            <textarea value={certificate} onChange={(e) => setCertificate(e.target.value)} required rows={4} style={{ width: '100%', padding: 8, border: '1px solid #ddd', borderRadius: 4, boxSizing: 'border-box', fontFamily: 'monospace', fontSize: 12 }} />
           </div>
-          <button type="submit">Save</button>
+          <button type="submit" style={{ padding: '10px 20px', backgroundColor: '#4caf50', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Add Host</button>
         </form>
       )}
 
-      <div style={{ display: 'grid', gap: 10 }}>
-        {hosts.map(host => (
-          <div key={host.id} style={{ padding: 15, border: '1px solid #ddd', borderRadius: 5 }}>
-            <h3>{host.name}</h3>
-            <p>Address: {host.address}</p>
-            <p>Status: {host.status}</p>
-            <p>Project: {host.project}</p>
-          </div>
-        ))}
-      </div>
+      {hosts.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>
+          <p style={{ fontSize: 48 }}>🖥️</p>
+          <p>No hosts added yet. Click "Add Host" to get started.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gap: 15 }}>
+          {hosts.map(host => (
+            <div key={host.id} style={{ padding: 20, border: '1px solid #ddd', borderRadius: 8, backgroundColor: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <h3 style={{ margin: 0 }}>{host.name}</h3>
+                <span style={{ 
+                  padding: '4px 12px', 
+                  borderRadius: 12, 
+                  backgroundColor: host.status === 'active' ? '#4caf50' : '#9e9e9e',
+                  color: 'white',
+                  fontSize: 12,
+                  fontWeight: 'bold'
+                }}>
+                  {host.status.toUpperCase()}
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div><strong>Address:</strong> {host.address}</div>
+                <div><strong>Project:</strong> {host.project}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
