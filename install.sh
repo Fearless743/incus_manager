@@ -71,9 +71,27 @@ usermod -aG incus-admin root 2>/dev/null || true
 newgrp incus-admin 2>/dev/null || true
 
 # ========================
-# 3. 配置 Incus 远程和镜像
+# 3. 创建专用项目
 # ========================
-log_info "=== 3/4 配置远程镜像源 ==="
+log_info "=== 3/4 创建专用项目 ==="
+
+PROJECT_NAME="incus-manager"
+
+if ! incus project list | grep -q "$PROJECT_NAME"; then
+    log_info "创建项目 $PROJECT_NAME ..."
+    incus project create "$PROJECT_NAME" -c features.images=true -c features.profiles=false
+    sleep 2
+else
+    log_warn "项目 $PROJECT_NAME 已存在"
+fi
+
+# 切换回 default 项目
+incus project switch default 2>/dev/null || true
+
+# ========================
+# 4. 配置远程和镜像
+# ========================
+log_info "=== 4/4 配置远程镜像源 ==="
 
 # 添加简单streams远程源
 if ! incus remote list | grep -q "^simplestreams"; then
@@ -86,20 +104,20 @@ fi
 ARCH=$(uname -m)
 if [ "$ARCH" == "aarch64" ]; then
     log_info "拉取 ARM64 镜像..."
-    incus image copy simplestreams:alpine/3.18/arm64/default local: --project=default || true
-    incus image copy simplestreams:debian/bullseye/arm64/default local: --project=default || true
+    incus image copy simplestreams:alpine/3.18/arm64/default local: --project=$PROJECT_NAME
+    incus image copy simplestreams:debian/bullseye/arm64/default local: --project=$PROJECT_NAME
 else
     log_info "拉取 AMD64 镜像..."
-    incus image copy simplestreams:alpine/3.18/amd64/default local: --project=default || true
-    incus image copy simplestreams:debian/bullseye/amd64/default local: --project=default || true
-    incus image copy simplestreams:debian/bullseye/amd64/cloud local: --project=default --vm || true
+    incus image copy simplestreams:alpine/3.18/amd64/default local: --project=$PROJECT_NAME
+    incus image copy simplestreams:debian/bullseye/amd64/default local: --project=$PROJECT_NAME
+    incus image copy simplestreams:debian/bullseye/amd64/cloud local: --project=$PROJECT_NAME --vm || true
 fi
 sleep 3
 
 # ========================
-# 4. 安全加固
+# 5. 安全加固
 # ========================
-log_info "=== 4/4 安全加固 ==="
+log_info "=== 5/5 安全加固 ==="
 
 # 防止容器名称泄露
 chmod 400 /proc/sched_debug 2>/dev/null || true
