@@ -21,9 +21,9 @@ services:
       DATABASE_URL: postgres://user:pass@postgres:5432/incus_manager?sslmode=disable
       INCUS_URL: http://host.docker.internal:8443
       JWT_SECRET: change-me-in-production
-      PORT: "80"
+      PORT: "8080"
     ports:
-      - "80:80"
+      - "8080:8080"
     depends_on:
       postgres:
         condition: service_healthy
