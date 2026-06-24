@@ -9,6 +9,7 @@ import (
 	"incus-manager/internal/config"
 	"incus-manager/internal/handler"
 	"incus-manager/internal/middleware"
+	"incus-manager/internal/model"
 	"incus-manager/internal/service"
 	"incus-manager/internal/websocket"
 	"gorm.io/driver/postgres"
@@ -21,6 +22,11 @@ func main() {
 	db, err := initDatabase(cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
+	}
+
+	// Auto migrate all models
+	if err := db.AutoMigrate(&model.User{}, &model.Host{}, &model.Instance{}); err != nil {
+		log.Fatalf("Failed to migrate database: %v", err)
 	}
 
 	authService := service.NewAuthService(db, cfg.JWTSecret)
