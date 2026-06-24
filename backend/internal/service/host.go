@@ -9,12 +9,12 @@ import (
 )
 
 type HostService struct {
-	DB           *gorm.DB
-	IncusService *IncusService
+	DB   *gorm.DB
+	IncusFactory *IncusServiceFactory
 }
 
-func NewHostService(db *gorm.DB, incus *IncusService) *HostService {
-	return &HostService{DB: db, IncusService: incus}
+func NewHostService(db *gorm.DB, factory *IncusServiceFactory) *HostService {
+	return &HostService{DB: db, IncusFactory: factory}
 }
 
 func (s *HostService) AddHost(name, address, certificate string, userID uint) (*model.Host, error) {
@@ -26,8 +26,7 @@ func (s *HostService) AddHost(name, address, certificate string, userID uint) (*
 		Status:      "active",
 	}
 
-	// Generate project name based on user and host
-	host.Project = generateProjectName(userID, host.Name)
+	host.Project = fmt.Sprintf("host-%s-%d", name, userID)
 
 	if err := s.DB.Create(host).Error; err != nil {
 		return nil, errors.New("failed to add host")
@@ -63,8 +62,4 @@ func (s *HostService) DeleteHost(id, userID uint) error {
 	}
 
 	return s.DB.Delete(&host).Error
-}
-
-func generateProjectName(userID uint, hostName string) string {
-	return fmt.Sprintf("host-%s-%d", hostName, userID)
 }

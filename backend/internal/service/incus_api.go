@@ -7,32 +7,33 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 
 	"incus-manager/internal/model"
 )
 
-type IncusService struct {
+type IncusClient struct {
 	URL      string
 	Client   *http.Client
-	CertFile string
-	KeyFile  string
+	CertData []byte
+	KeyData  []byte
 }
 
-func NewIncusService(url, certFile, keyFile string) *IncusService {
+func NewIncusClient(url, certPEM, keyPEM string) *IncusClient {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 
-	return &IncusService{
+	return &IncusClient{
 		URL:      url,
 		Client:   &http.Client{Transport: tr, Timeout: 30 * time.Second},
-		CertFile: certFile,
-		KeyFile:  keyFile,
+		CertData: []byte(certPEM),
+		KeyData:  []byte(keyPEM),
 	}
 }
 
-func (s *IncusService) doRequest(method, path string, body interface{}) (map[string]interface{}, error) {
+func (c *IncusClient) doRequest(method, path string, body interface{}) (map[string]interface{}, error) {
 	var reqBody io.Reader
 	if body != nil {
 		jsonBody, err := json.Marshal(body)
@@ -42,15 +43,14 @@ func (s *IncusService) doRequest(method, path string, body interface{}) (map[str
 		reqBody = bytes.NewBuffer(jsonBody)
 	}
 
-	url := fmt.Sprintf("%s%s", s.URL, path)
+	url := fmt.Sprintf("%s%s", c.URL, path)
 	req, err := http.NewRequest(method, url, reqBody)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Cert-Hash", "manual")
 
-	resp, err := s.Client.Do(req)
+	resp, err := c.Client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -73,8 +73,8 @@ func (s *IncusService) doRequest(method, path string, body interface{}) (map[str
 	return result, nil
 }
 
-func (s *IncusService) GetInstances(project string) ([]model.Instance, error) {
-	result, err := s.doRequest("GET", fmt.Sprintf("/1.0/instances?project=%s&state=all", project), nil)
+func (c *IncusClient) GetInstances(project string) ([]model.Instance, error) {
+	result, err := c.doRequest("GET", fmt.Sprintf("/1.0/instances?project=%s&state=all", project), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -98,37 +98,45 @@ func (s *IncusService) GetInstances(project string) ([]model.Instance, error) {
 	return instances, nil
 }
 
-func (s *IncusService) CreateInstance(config model.InstanceConfig) error {
+func (c *IncusClient) CreateInstance(config model.InstanceConfig) error {
 	instanceData := map[string]interface{}{
-		"name":    config.Name,
-		"type":    "container",
+		"name":      config.Name,
+		"type":      "container",
 		"ephemeral": false,
 		"source": map[string]interface{}{
-			"server":  config.Image,
-			"type":    "image",
+			"server":   config.Image,
+			"type":     "image",
 			"protocol": "simplestreams",
-			"mode":    "pull",
+			"mode":     "pull",
 		},
 		"project": config.Project,
 		"config": map[string]interface{}{
-			"limits.cpu":          fmt.Sprintf("%d", config.CPU),
-			"limits.memory":       fmt.Sprintf("%dMB", config.Memory),
-			"limits.disk":         fmt.Sprintf("%dGB", config.Disk),
-			"security.privileged": "false",
+			"limits.cpu":            fmt.Sprintf("%d", config.CPU),
+			"limits.memory":         fmt.Sprintf("%dMB", config.Memory),
+			"limits.root.size":      fmt.Sprintf("%dGB", config.Disk),
+			"security.privileged":   "false",
 		},
 	}
 
-	_, err := s.doRequest("POST", "/1.0/instances", instanceData)
+	// Add port forwarding if ports are specified
+	if len(config.Ports) > 0 {
+		configMap := instanceData["config"].(map[string]interface{})
+		for i, port := range config.Ports {
+			configMap[fmt.Sprintf("proxy.%d", i)] = fmt.Sprintf("tcp::%d::-:%d", port, port)
+		}
+	}
+
+	_, err := c.doRequest("POST", "/1.0/instances", instanceData)
 	return err
 }
 
-func (s *IncusService) DeleteInstance(name, project string) error {
-	_, err := s.doRequest("DELETE", fmt.Sprintf("/1.0/instances/%s?project=%s", name, project), nil)
+func (c *IncusClient) DeleteInstance(name, project string) error {
+	_, err := c.doRequest("DELETE", fmt.Sprintf("/1.0/instances/%s?project=%s", name, project), nil)
 	return err
 }
 
-func (s *IncusService) StartInstance(name, project string) error {
-	_, err := s.doRequest("PUT", fmt.Sprintf("/1.0/instances/%s/state?project=%s", name, project), map[string]interface{}{
+func (c *IncusClient) StartInstance(name, project string) error {
+	_, err := c.doRequest("PUT", fmt.Sprintf("/1.0/instances/%s/state?project=%s", name, project), map[string]interface{}{
 		"action":  "start",
 		"timeout": -1,
 		"force":   false,
@@ -136,8 +144,8 @@ func (s *IncusService) StartInstance(name, project string) error {
 	return err
 }
 
-func (s *IncusService) StopInstance(name, project string) error {
-	_, err := s.doRequest("PUT", fmt.Sprintf("/1.0/instances/%s/state?project=%s", name, project), map[string]interface{}{
+func (c *IncusClient) StopInstance(name, project string) error {
+	_, err := c.doRequest("PUT", fmt.Sprintf("/1.0/instances/%s/state?project=%s", name, project), map[string]interface{}{
 		"action":  "stop",
 		"timeout": -1,
 		"force":   false,
@@ -145,8 +153,8 @@ func (s *IncusService) StopInstance(name, project string) error {
 	return err
 }
 
-func (s *IncusService) GetImages(project string) ([]string, error) {
-	result, err := s.doRequest("GET", fmt.Sprintf("/1.0/images?project=%s", project), nil)
+func (c *IncusClient) GetImages(project string) ([]string, error) {
+	result, err := c.doRequest("GET", fmt.Sprintf("/1.0/images?project=%s", project), nil)
 	if err != nil {
 		return []string{}, err
 	}
@@ -169,60 +177,35 @@ func (s *IncusService) GetImages(project string) ([]string, error) {
 	return images, nil
 }
 
-func (s *IncusService) GetHosts() ([]map[string]interface{}, error) {
-	result, err := s.doRequest("GET", "/1.0/hosts", nil)
-	if err != nil {
-		return nil, err
-	}
-
-	hosts := make([]map[string]interface{}, 0)
-	if entries, ok := result["entries"].([]interface{}); ok {
-		for _, entry := range entries {
-			if entryMap, ok := entry.(map[string]interface{}); ok {
-				hosts = append(hosts, entryMap)
-			}
-		}
-	}
-
-	return hosts, nil
+// IncusServiceFactory manages per-host Incus clients
+type IncusServiceFactory struct {
+	clients map[uint]*IncusClient
+	mu      sync.RWMutex
 }
 
-func (s *IncusService) GetNetworks(project string) ([]string, error) {
-	result, err := s.doRequest("GET", fmt.Sprintf("/1.0/networks?project=%s", project), nil)
-	if err != nil {
-		return []string{}, err
+func NewIncusServiceFactory() *IncusServiceFactory {
+	return &IncusServiceFactory{
+		clients: make(map[uint]*IncusClient),
 	}
-
-	networks := make([]string, 0)
-	if entries, ok := result["entries"].([]interface{}); ok {
-		for _, entry := range entries {
-			if entryMap, ok := entry.(map[string]interface{}); ok {
-				if name, ok := entryMap["name"].(string); ok {
-					networks = append(networks, name)
-				}
-			}
-		}
-	}
-
-	return networks, nil
 }
 
-func (s *IncusService) GetProject(projectName string) (map[string]interface{}, error) {
-	result, err := s.doRequest("GET", fmt.Sprintf("/1.0/projects/%s", projectName), nil)
-	if err != nil {
-		return nil, err
+func (f *IncusServiceFactory) GetClient(hostID uint, address, certificate string) *IncusClient {
+	f.mu.RLock()
+	if client, ok := f.clients[hostID]; ok {
+		f.mu.RUnlock()
+		return client
+	}
+	f.mu.RUnlock()
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	// Double-check after acquiring write lock
+	if client, ok := f.clients[hostID]; ok {
+		return client
 	}
 
-	return result, nil
-}
-
-func (s *IncusService) CreateProject(projectName, description string) error {
-	projectData := map[string]interface{}{
-		"name":        projectName,
-		"config":      map[string]interface{}{},
-		"description": description,
-	}
-
-	_, err := s.doRequest("POST", "/1.0/projects", projectData)
-	return err
+	client := NewIncusClient(address, certificate, "")
+	f.clients[hostID] = client
+	return client
 }

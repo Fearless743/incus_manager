@@ -4,8 +4,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
-	"strings"
 
 	"incus-manager/internal/config"
 	"incus-manager/internal/handler"
@@ -24,13 +22,13 @@ func main() {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	incusService := service.NewIncusService(getIncusURL(), "", "")
 	authService := service.NewAuthService(db, cfg.JWTSecret)
 	userService := service.NewUserService(db)
-	hostService := service.NewHostService(db, incusService)
+	incusFactory := service.NewIncusServiceFactory()
+	hostService := service.NewHostService(db, incusFactory)
 	ipManager := service.NewIPManager(db)
-	instanceService := service.NewInstanceService(db, incusService, ipManager)
-	sharedService := service.NewSharedService(db, incusService)
+	instanceService := service.NewInstanceService(db, incusFactory, ipManager)
+	sharedService := service.NewSharedService(db, incusFactory)
 	hub := websocket.NewHub()
 
 	go hub.Run()
@@ -81,12 +79,11 @@ func staticFileHandler() http.HandlerFunc {
 			path = "/index.html"
 		}
 
-		cleanPath := strings.TrimPrefix(path, "/")
-		filePath := filepath.Join("dist", cleanPath)
+		cleanPath := path[1:]
+		filePath := "dist/" + cleanPath
 
 		data, err := os.ReadFile(filePath)
 		if err != nil {
-			// SPA fallback - serve index.html
 			indexData, err2 := os.ReadFile("dist/index.html")
 			if err2 != nil {
 				http.Error(w, "Not found", http.StatusNotFound)
@@ -103,7 +100,7 @@ func staticFileHandler() http.HandlerFunc {
 }
 
 func getContentType(path string) string {
-	ext := strings.ToLower(filepath.Ext(path))
+	ext := path[len(path)-4:]
 	switch ext {
 	case ".html":
 		return "text/html; charset=utf-8"
@@ -124,17 +121,6 @@ func getContentType(path string) string {
 	default:
 		return "application/octet-stream"
 	}
-}
-
-func getIncusURL() string {
-	url := os.Getenv("INCUS_URL")
-	if url == "" {
-		if _, err := os.Stat("/var/run/incus/unix.sock"); err == nil {
-			return "http://unix.socket"
-		}
-		url = "https://localhost:8443"
-	}
-	return url
 }
 
 func initDatabase(dsn string) (*gorm.DB, error) {

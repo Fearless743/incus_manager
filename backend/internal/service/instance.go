@@ -9,12 +9,12 @@ import (
 
 type InstanceService struct {
 	DB           *gorm.DB
-	IncusService *IncusService
+	IncusFactory *IncusServiceFactory
 	IPManager    *IPManager
 }
 
-func NewInstanceService(db *gorm.DB, incus *IncusService, ipManager *IPManager) *InstanceService {
-	return &InstanceService{DB: db, IncusService: incus, IPManager: ipManager}
+func NewInstanceService(db *gorm.DB, factory *IncusServiceFactory, ipManager *IPManager) *InstanceService {
+	return &InstanceService{DB: db, IncusFactory: factory, IPManager: ipManager}
 }
 
 func (s *InstanceService) CreateInstance(config model.InstanceConfig, userID uint) (*model.Instance, error) {
@@ -46,7 +46,8 @@ func (s *InstanceService) CreateInstance(config model.InstanceConfig, userID uin
 		ExpiryDate:     config.ExpiryDate,
 	}
 
-	// Create in Incus
+	// Get per-host Incus client and create instance
+	client := s.IncusFactory.GetClient(host.ID, host.Address, host.Certificate)
 	incusConfig := model.InstanceConfig{
 		Name:          config.Name,
 		Image:         config.Image,
@@ -60,7 +61,7 @@ func (s *InstanceService) CreateInstance(config model.InstanceConfig, userID uin
 		DownloadLimit: config.DownloadLimit,
 	}
 
-	if err := s.IncusService.CreateInstance(incusConfig); err != nil {
+	if err := client.CreateInstance(incusConfig); err != nil {
 		s.IPManager.ReleaseIP(host.ID, mappingIP)
 		return nil, errors.New("failed to create instance in Incus")
 	}
@@ -96,7 +97,8 @@ func (s *InstanceService) DeleteInstance(instanceID, userID uint) error {
 		return err
 	}
 
-	if err := s.IncusService.DeleteInstance(instance.Name, host.Project); err != nil {
+	client := s.IncusFactory.GetClient(host.ID, host.Address, host.Certificate)
+	if err := client.DeleteInstance(instance.Name, host.Project); err != nil {
 		return err
 	}
 
@@ -133,7 +135,8 @@ func (s *InstanceService) StartInstance(instanceID, userID uint) error {
 		return err
 	}
 
-	return s.IncusService.StartInstance(instance.Name, host.Project)
+	client := s.IncusFactory.GetClient(host.ID, host.Address, host.Certificate)
+	return client.StartInstance(instance.Name, host.Project)
 }
 
 func (s *InstanceService) StopInstance(instanceID, userID uint) error {
@@ -151,5 +154,6 @@ func (s *InstanceService) StopInstance(instanceID, userID uint) error {
 		return err
 	}
 
-	return s.IncusService.StopInstance(instance.Name, host.Project)
+	client := s.IncusFactory.GetClient(host.ID, host.Address, host.Certificate)
+	return client.StopInstance(instance.Name, host.Project)
 }
