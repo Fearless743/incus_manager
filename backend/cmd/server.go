@@ -50,19 +50,10 @@ func main() {
 
 	// API routes
 	auth := middleware.Authenticate(authService)
-	router.HandleFunc("POST /api/login", h.Login)
-	router.HandleFunc("POST /api/users", h.CreateUser)
-	router.HandleFunc("POST /api/hosts", auth(h.AddHost))
-	router.HandleFunc("GET /api/hosts", auth(h.GetHosts))
-	router.HandleFunc("GET /api/instances", auth(h.GetInstances))
-	router.HandleFunc("POST /api/instances", auth(h.CreateInstance))
-	router.HandleFunc("DELETE /api/instances/", auth(h.DeleteInstance))
-	router.HandleFunc("POST /api/instances/start/", auth(h.StartInstance))
-	router.HandleFunc("POST /api/instances/stop/", auth(h.StopInstance))
-	router.HandleFunc("POST /api/share", auth(h.ShareInstance))
-	router.HandleFunc("DELETE /api/share/", auth(h.RevokeShare))
-	router.HandleFunc("GET /api/instances/images", auth(h.GetImages))
-	router.HandleFunc("GET /api/stats", auth(h.GetStats))
+	router.HandleFunc("/api/login", h.Login)
+	router.HandleFunc("/api/users", h.CreateUser)
+	router.HandleFunc("/api/hosts", auth(h.GetHosts))
+	router.HandleFunc("/api/instances", auth(h.GetInstances))
 
 	// Static files
 	router.HandleFunc("/", staticFileHandler())
