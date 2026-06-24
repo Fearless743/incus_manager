@@ -77,7 +77,7 @@ func (s *InstanceService) CreateInstance(config model.InstanceConfig, userID uin
 
 func (s *InstanceService) GetInstancesByUser(userID uint) ([]model.Instance, error) {
 	var instances []model.Instance
-	if err := s.DB.Where("user_id = ? OR ?", userID, userID).Find(&instances).Error; err != nil {
+	if err := s.DB.Where("user_id = ?", userID).Find(&instances).Error; err != nil {
 		return nil, errors.New("failed to get instances")
 	}
 	return instances, nil

@@ -2,8 +2,9 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
-	"strconv"
+	"strings"
 	"time"
 
 	"incus-manager/internal/middleware"
@@ -20,7 +21,7 @@ type Handler struct {
 	ipManager       *service.IPManager
 }
 
-func NewHandler(auth *service.AuthService, user *service.UserService, host *service.HostService, 
+func NewHandler(auth *service.AuthService, user *service.UserService, host *service.HostService,
 	instance *service.InstanceService, shared *service.SharedService, ipMgr *service.IPManager) *Handler {
 	return &Handler{
 		authService:     auth,
@@ -161,13 +162,13 @@ func (h *Handler) createInstance(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) deleteInstance(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r)
-	instanceID, err := strconv.ParseUint(r.PathValue("id"), 10, 32)
-	if err != nil {
+	instanceID := getInstanceIDFromPath(r.URL.Path)
+	if instanceID == 0 {
 		writeError(w, "Invalid instance ID", http.StatusBadRequest)
 		return
 	}
 
-	err = h.instanceService.DeleteInstance(uint(instanceID), userID)
+	err := h.instanceService.DeleteInstance(instanceID, userID)
 	if err != nil {
 		writeError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -178,13 +179,13 @@ func (h *Handler) deleteInstance(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) startInstance(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r)
-	instanceID, err := strconv.ParseUint(r.PathValue("id"), 10, 32)
-	if err != nil {
+	instanceID := getInstanceIDFromPath(r.URL.Path)
+	if instanceID == 0 {
 		writeError(w, "Invalid instance ID", http.StatusBadRequest)
 		return
 	}
 
-	err = h.instanceService.StartInstance(uint(instanceID), userID)
+	err := h.instanceService.StartInstance(instanceID, userID)
 	if err != nil {
 		writeError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -195,13 +196,13 @@ func (h *Handler) startInstance(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) stopInstance(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r)
-	instanceID, err := strconv.ParseUint(r.PathValue("id"), 10, 32)
-	if err != nil {
+	instanceID := getInstanceIDFromPath(r.URL.Path)
+	if instanceID == 0 {
 		writeError(w, "Invalid instance ID", http.StatusBadRequest)
 		return
 	}
 
-	err = h.instanceService.StopInstance(uint(instanceID), userID)
+	err := h.instanceService.StopInstance(instanceID, userID)
 	if err != nil {
 		writeError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -238,19 +239,32 @@ func (h *Handler) shareInstance(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) revokeShare(w http.ResponseWriter, r *http.Request) {
-	instanceID, err := strconv.ParseUint(r.PathValue("instanceId"), 10, 32)
-	if err != nil {
-		writeError(w, "Invalid instance ID", http.StatusBadRequest)
+	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+
+	instanceID := uint(0)
+	sharedWithUserID := uint(0)
+	for i, seg := range parts {
+		if i == 0 && seg == "share" {
+			continue
+		}
+		id := parseUint(seg)
+		if id == 0 {
+			writeError(w, "Invalid ID", http.StatusBadRequest)
+			return
+		}
+		if instanceID == 0 {
+			instanceID = id
+		} else {
+			sharedWithUserID = id
+		}
+	}
+
+	if instanceID == 0 || sharedWithUserID == 0 {
+		writeError(w, "Missing instance ID or user ID", http.StatusBadRequest)
 		return
 	}
 
-	sharedWithUserID, err := strconv.ParseUint(r.PathValue("userId"), 10, 32)
-	if err != nil {
-		writeError(w, "Invalid user ID", http.StatusBadRequest)
-		return
-	}
-
-	err = h.sharedService.RevokeShare(uint(instanceID), uint(sharedWithUserID))
+	err := h.sharedService.RevokeShare(instanceID, sharedWithUserID)
 	if err != nil {
 		writeError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -292,4 +306,42 @@ func writeError(w http.ResponseWriter, message string, statusCode int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 	json.NewEncoder(w).Encode(map[string]string{"error": message})
+}
+
+func splitPath(s string) []string {
+	result := []string{}
+	current := ""
+	for _, c := range s {
+		if c == '/' {
+			if current != "" {
+				result = append(result, current)
+				current = ""
+			}
+		} else {
+			current += string(c)
+		}
+	}
+	if current != "" {
+		result = append(result, current)
+	}
+	return result
+}
+
+func getInstanceIDFromPath(path string) uint {
+	parts := splitPath(path)
+	for i, p := range parts {
+		if p == "instances" && i+1 < len(parts) {
+			return parseUint(parts[i+1])
+		}
+	}
+	return 0
+}
+
+func parseUint(s string) uint {
+	var n uint64
+	_, err := fmt.Sscanf(s, "%d", &n)
+	if err != nil {
+		return 0
+	}
+	return uint(n)
 }
