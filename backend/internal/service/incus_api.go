@@ -84,8 +84,22 @@ func (c *IncusClient) Ping() error {
 	if err != nil {
 		return err
 	}
-	if result["type"] != "api" {
-		return fmt.Errorf("not an Incus server, got type: %s", result["type"])
+	if result["type"] != "api" && result["type"] != "sync" {
+		return fmt.Errorf("not a valid Incus server, got type: %s", result["type"])
+	}
+	if result["status_code"] != float64(200) {
+		return fmt.Errorf("Incus returned non-200 status: %v", result["status_code"])
+	}
+	metadata, ok := result["metadata"].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("no metadata in response")
+	}
+	auth, ok := metadata["auth"].(string)
+	if !ok {
+		return fmt.Errorf("no auth method in response")
+	}
+	if auth == "untrusted" {
+		return fmt.Errorf("证书无效或未通过身份验证")
 	}
 	return nil
 }
