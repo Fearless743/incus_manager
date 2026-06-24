@@ -47,8 +47,8 @@ export const instanceAPI = {
   create: (config) => api.post('/instances', config),
   getAll: () => api.get('/instances'),
   delete: (id) => api.delete(`/instances/${id}`),
-  start: (id) => api.post(`/instances/${id}/start`),
-  stop: (id) => api.post(`/instances/${id}/stop`),
+  start: (id) => api.post(`/instances/start/${id}`),
+  stop: (id) => api.post(`/instances/stop/${id}`),
   getImages: () => api.get('/instances/images'),
 };
 
