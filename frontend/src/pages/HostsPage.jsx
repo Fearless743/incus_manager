@@ -113,7 +113,7 @@ const HostsPage = () => {
             <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} required style={{ width: '100%', padding: 8, border: '1px solid #ddd', borderRadius: 4, boxSizing: 'border-box' }} />
           </div>
           <div style={{ marginBottom: 10 }}>
-            <label>客户端证书（PEM 格式）：</label>
+            <label>凭证（PEM 格式）：</label>
             <textarea value={certificate} onChange={(e) => setCertificate(e.target.value)} required rows={4} style={{ width: '100%', padding: 8, border: '1px solid #ddd', borderRadius: 4, boxSizing: 'border-box', fontFamily: 'monospace', fontSize: 12 }} />
           </div>
           
