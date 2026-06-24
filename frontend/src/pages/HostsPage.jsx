@@ -1,165 +1,240 @@
 import { useState, useEffect } from 'react';
 import { hostAPI } from '../services/api';
+import {
+  Typography,
+  Button,
+  Table,
+  Tag,
+  Modal,
+  Form,
+  Input,
+  Space,
+  Popconfirm,
+  message,
+  Empty,
+} from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+
+const { Title } = Typography;
 
 const HostsPage = () => {
   const [hosts, setHosts] = useState([]);
-  const [showForm, setShowForm] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const [editingHost, setEditingHost] = useState(null);
-  const [name, setName] = useState('');
-  const [address, setAddress] = useState('');
-  const [certificate, setCertificate] = useState('');
-  const [connecting, setConnecting] = useState(false);
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    loadHosts();
-  }, []);
+  const [connecting, setConnecting] = useState(false);
+  const [tableLoading, setTableLoading] = useState(true);
+  const [form] = Form.useForm();
 
   const loadHosts = async () => {
+    setTableLoading(true);
     try {
       const response = await hostAPI.getAll();
       setHosts(response.data);
     } catch (err) {
       console.error('加载主机失败:', err);
+      message.error('加载主机列表失败');
+    } finally {
+      setTableLoading(false);
     }
   };
 
-  const resetForm = () => {
-    setName('');
-    setAddress('');
-    setCertificate('');
-    setShowForm(false);
+  useEffect(() => {
+    let active = true;
+
+    (async () => {
+      try {
+        const response = await hostAPI.getAll();
+        if (active) setHosts(response.data);
+      } catch (err) {
+        if (active) {
+          console.error('加载主机失败:', err);
+          message.error('加载主机列表失败');
+        }
+      } finally {
+        if (active) setTableLoading(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const openCreateModal = () => {
     setEditingHost(null);
+    form.resetFields();
+    setModalOpen(true);
   };
 
-  const openEditForm = (host) => {
+  const openEditModal = (host) => {
     setEditingHost(host);
-    setName(host.name);
-    setAddress(host.address);
-    setCertificate(host.certificate || '');
-    setShowForm(true);
+    form.setFieldsValue({
+      name: host.name,
+      address: host.address,
+      certificate: host.certificate || '',
+    });
+    setModalOpen(true);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const closeModal = () => {
+    setModalOpen(false);
+    setEditingHost(null);
+    form.resetFields();
+  };
+
+  const handleSubmit = async (values) => {
     setLoading(true);
     try {
       setConnecting(true);
-      const response = await hostAPI.test(address, certificate);
+      const response = await hostAPI.test(values.address, values.certificate);
       setConnecting(false);
-      
+
       if (response.data.success) {
         if (editingHost) {
-          await hostAPI.update(editingHost.id, { name, address, certificate });
+          await hostAPI.update(editingHost.id, values);
+          message.success('主机已更新');
         } else {
-          await hostAPI.add(name, address, certificate);
+          await hostAPI.add(values.name, values.address, values.certificate);
+          message.success('主机已添加');
         }
-        resetForm();
+        closeModal();
         loadHosts();
       } else {
-        alert('连接测试失败：' + response.data.message);
+        message.error('连接测试失败：' + response.data.message);
       }
     } catch (err) {
       setConnecting(false);
-      alert('连接测试失败：' + (err.response?.data?.error || '无法连接到主机'));
+      message.error('连接测试失败：' + (err.response?.data?.error || '无法连接到主机'));
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('确定要删除此主机吗？')) return;
     try {
       await hostAPI.delete(id);
+      message.success('主机已删除');
       loadHosts();
     } catch (err) {
+      message.error('删除主机失败');
       console.error('删除主机失败:', err);
     }
   };
 
+  const columns = [
+    {
+      title: '名称',
+      dataIndex: 'name',
+      key: 'name',
+    },
+    {
+      title: '地址',
+      dataIndex: 'address',
+      key: 'address',
+    },
+    {
+      title: '项目',
+      dataIndex: 'project',
+      key: 'project',
+    },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      key: 'status',
+      render: (status) => (
+        <Tag color={status === 'active' ? 'success' : 'default'}>
+          {status === 'active' ? '在线' : status?.toUpperCase()}
+        </Tag>
+      ),
+    },
+    {
+      title: '操作',
+      key: 'actions',
+      render: (_, record) => (
+        <Space>
+          <Button
+            type="link"
+            icon={<EditOutlined />}
+            onClick={() => openEditModal(record)}
+          >
+            编辑
+          </Button>
+          <Popconfirm
+            title="确定要删除此主机吗？"
+            onConfirm={() => handleDelete(record.id)}
+            okText="确定"
+            cancelText="取消"
+          >
+            <Button type="link" danger icon={<DeleteOutlined />}>
+              删除
+            </Button>
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
   return (
-    <div style={{ padding: 20 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
-        <h1>主机管理</h1>
-        <button 
-          onClick={() => { resetForm(); setShowForm(true); }}
-          style={{ padding: '10px 20px', backgroundColor: '#4caf50', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-        >
+    <div>
+      <Space style={{ marginBottom: 16, width: '100%', justifyContent: 'space-between' }}>
+        <Title level={2} style={{ margin: 0 }}>主机管理</Title>
+        <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
           添加主机
-        </button>
-      </div>
+        </Button>
+      </Space>
 
-      {showForm && (
-        <form onSubmit={handleSubmit} style={{ marginBottom: 20, padding: 20, border: '1px solid #ccc', borderRadius: 8, backgroundColor: '#f9f9f9' }}>
-          <h3 style={{ marginTop: 0 }}>{editingHost ? '编辑主机' : '新建主机'}</h3>
-          <div style={{ marginBottom: 10 }}>
-            <label>名称：</label>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} required style={{ width: '100%', padding: 8, border: '1px solid #ddd', borderRadius: 4, boxSizing: 'border-box' }} />
-          </div>
-          <div style={{ marginBottom: 10 }}>
-            <label>地址（IP:端口，如 192.168.1.100:8443）：</label>
-            <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} required style={{ width: '100%', padding: 8, border: '1px solid #ddd', borderRadius: 4, boxSizing: 'border-box' }} />
-          </div>
-          <div style={{ marginBottom: 10 }}>
-            <label>凭证：</label>
-            <textarea value={certificate} onChange={(e) => setCertificate(e.target.value)} required rows={4} style={{ width: '100%', padding: 8, border: '1px solid #ddd', borderRadius: 4, boxSizing: 'border-box', fontFamily: 'monospace', fontSize: 12 }} />
-          </div>
+      <Table
+        columns={columns}
+        dataSource={hosts}
+        rowKey="id"
+        loading={tableLoading}
+        locale={{ emptyText: <Empty description="尚未添加主机" /> }}
+      />
 
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button type="submit" disabled={loading || connecting} style={{ padding: '10px 20px', backgroundColor: '#4caf50', color: 'white', border: 'none', borderRadius: 4, cursor: loading || connecting ? 'not-allowed' : 'pointer' }}>
-              {loading ? '处理中...' : connecting ? '测试连接中...' : (editingHost ? '保存' : '添加主机')}
-            </button>
-            <button type="button" onClick={() => resetForm()} style={{ padding: '10px 20px', backgroundColor: '#9e9e9e', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>取消</button>
-          </div>
-        </form>
-      )}
-
-      {hosts.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>
-          <p style={{ fontSize: 48 }}>🖥️</p>
-          <p>尚未添加任何主机。点击"添加主机"开始使用。</p>
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gap: 15 }}>
-          {hosts.map(host => (
-            <div key={host.id} style={{ padding: 20, border: '1px solid #ddd', borderRadius: 8, backgroundColor: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <h3 style={{ margin: 0 }}>{host.name}</h3>
-                  <span style={{ 
-                    padding: '4px 12px', 
-                    borderRadius: 12, 
-                    backgroundColor: host.status === 'active' ? '#4caf50' : '#9e9e9e',
-                    color: 'white',
-                    fontSize: 12,
-                    fontWeight: 'bold'
-                  }}>
-                    {host.status === 'active' ? '在线' : host.status.toUpperCase()}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button 
-                    onClick={() => openEditForm(host)} 
-                    style={{ padding: '6px 12px', backgroundColor: '#2196f3', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}
-                  >
-                    ✏️ 编辑
-                  </button>
-                  <button 
-                    onClick={() => handleDelete(host.id)} 
-                    style={{ padding: '6px 12px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}
-                  >
-                    🗑️ 删除
-                  </button>
-                </div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div><strong>地址：</strong> {host.address}</div>
-                <div><strong>项目：</strong> {host.project}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      <Modal
+        title={editingHost ? '编辑主机' : '新建主机'}
+        open={modalOpen}
+        onCancel={closeModal}
+        footer={null}
+        destroyOnHidden
+      >
+        <Form form={form} layout="vertical" onFinish={handleSubmit}>
+          <Form.Item
+            label="名称"
+            name="name"
+            rules={[{ required: true, message: '请输入主机名称' }]}
+          >
+            <Input placeholder="主机名称" />
+          </Form.Item>
+          <Form.Item
+            label="地址（IP:端口，如 192.168.1.100:8443）"
+            name="address"
+            rules={[{ required: true, message: '请输入主机地址' }]}
+          >
+            <Input placeholder="192.168.1.100:8443" />
+          </Form.Item>
+          <Form.Item
+            label="凭证"
+            name="certificate"
+            rules={[{ required: true, message: '请输入凭证' }]}
+          >
+            <Input.TextArea rows={4} style={{ fontFamily: 'monospace', fontSize: 12 }} />
+          </Form.Item>
+          <Form.Item style={{ marginBottom: 0 }}>
+            <Space>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={loading || connecting}
+              >
+                {connecting ? '测试连接中...' : editingHost ? '保存' : '添加主机'}
+              </Button>
+              <Button onClick={closeModal}>取消</Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };

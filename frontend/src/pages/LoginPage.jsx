@@ -2,22 +2,21 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { authAPI } from '../services/api';
 import { useNavigate } from 'react-router-dom';
+import { Card, Form, Input, Button, Alert, Flex, Typography } from 'antd';
+import { CloudServerOutlined } from '@ant-design/icons';
 
 const LoginPage = () => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (values) => {
     setError('');
     setLoading(true);
 
     try {
-      const response = await authAPI.login(username, password);
+      const response = await authAPI.login(values.username, values.password);
       login(response.data.user, response.data.token);
       navigate('/dashboard');
     } catch (err) {
@@ -28,77 +27,52 @@ const LoginPage = () => {
   };
 
   return (
-    <div style={{ 
-      maxWidth: 400, 
-      margin: '100px auto', 
-      padding: 30, 
-      borderRadius: 8, 
-      boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-      backgroundColor: 'white'
-    }}>
-      <h1 style={{ textAlign: 'center', marginBottom: 30 }}>Incus 管理器</h1>
-      {error && (
-        <div style={{ 
-          padding: 10, 
-          backgroundColor: '#ffebee', 
-          color: '#c62828', 
-          borderRadius: 4,
-          marginBottom: 20
-        }}>
-          {error}
-        </div>
-      )}
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: 15 }}>
-          <label style={{ display: 'block', marginBottom: 5, fontWeight: 'bold' }}>用户名</label>
-          <input
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-            style={{ 
-              width: '100%', 
-              padding: 10, 
-              border: '1px solid #ddd', 
-              borderRadius: 4,
-              boxSizing: 'border-box'
-            }}
-          />
-        </div>
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ display: 'block', marginBottom: 5, fontWeight: 'bold' }}>密码</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            style={{ 
-              width: '100%', 
-              padding: 10, 
-              border: '1px solid #ddd', 
-              borderRadius: 4,
-              boxSizing: 'border-box'
-            }}
-          />
-        </div>
-        <button 
-          type="submit" 
-          disabled={loading}
-          style={{ 
-            width: '100%', 
-            padding: 12, 
-            backgroundColor: '#007bff', 
-            color: 'white', 
-            border: 'none',
-            borderRadius: 4,
-            cursor: loading ? 'not-allowed' : 'pointer',
-            fontSize: 16
-          }}
-        >
-          {loading ? '登录中...' : '登录'}
-        </button>
-      </form>
-    </div>
+    <Flex
+      align="center"
+      justify="center"
+      style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #1677ff 0%, #0958d9 50%, #001d66 100%)',
+      }}
+    >
+      <Card
+        style={{ width: 400, boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)' }}
+        styles={{ body: { padding: 32 } }}
+      >
+        <Flex align="center" justify="center" gap={8} style={{ marginBottom: 32 }}>
+          <CloudServerOutlined style={{ fontSize: 28, color: '#1677ff' }} />
+          <Typography.Title level={3} style={{ margin: 0 }}>
+            Incus 管理器
+          </Typography.Title>
+        </Flex>
+
+        {error && (
+          <Alert type="error" message={error} showIcon style={{ marginBottom: 24 }} />
+        )}
+
+        <Form layout="vertical" onFinish={handleSubmit} autoComplete="off">
+          <Form.Item
+            label="用户名"
+            name="username"
+            rules={[{ required: true, message: '请输入用户名' }]}
+          >
+            <Input size="large" placeholder="请输入用户名" />
+          </Form.Item>
+          <Form.Item
+            label="密码"
+            name="password"
+            rules={[{ required: true, message: '请输入密码' }]}
+          >
+            <Input.Password size="large" placeholder="请输入密码" />
+          </Form.Item>
+          <Form.Item style={{ marginBottom: 0 }}>
+            <Button type="primary" htmlType="submit" block size="large" loading={loading}>
+              登录
+            </Button>
+          </Form.Item>
+        </Form>
+      </Card>
+    </Flex>
   );
 };
 

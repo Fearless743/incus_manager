@@ -1,9 +1,37 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { statsAPI } from '../services/api';
+import {
+  Typography,
+  Row,
+  Col,
+  Card,
+  Statistic,
+  Button,
+  Descriptions,
+  Spin,
+  Space,
+} from 'antd';
+import {
+  CloudServerOutlined,
+  AppstoreOutlined,
+  ThunderboltOutlined,
+  ShareAltOutlined,
+} from '@ant-design/icons';
+
+const { Title, Text } = Typography;
+
+const statCards = [
+  { key: 'total_hosts', title: '主机总数', icon: <CloudServerOutlined />, color: '#1677ff' },
+  { key: 'total_instances', title: '实例总数', icon: <AppstoreOutlined />, color: '#52c41a' },
+  { key: 'running_instances', title: '运行中', icon: <ThunderboltOutlined />, color: '#fa8c16' },
+  { key: 'shared_instances', title: '已共享', icon: <ShareAltOutlined />, color: '#722ed1' },
+];
 
 const DashboardPage = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     total_hosts: 0,
     total_instances: 0,
@@ -13,77 +41,69 @@ const DashboardPage = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadStats();
+    let active = true;
+
+    (async () => {
+      try {
+        const response = await statsAPI.get();
+        if (active) setStats(response.data);
+      } catch (err) {
+        console.error('加载统计失败:', err);
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const loadStats = async () => {
-    try {
-      const response = await statsAPI.get();
-      setStats(response.data);
-    } catch (err) {
-      console.error('加载统计失败:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
-    return <div style={{ padding: 20 }}>加载中...</div>;
-  }
-
   return (
-    <div style={{ padding: 20 }}>
-      <h1>欢迎，{user?.username}！</h1>
-      <p style={{ color: '#666' }}>这里是您的 Incus 管理面板概览。</p>
-      
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, marginTop: 30 }}>
-        <StatCard title="主机总数" value={stats.total_hosts} icon="🖥️" color="#2196f3" />
-        <StatCard title="实例总数" value={stats.total_instances} icon="📦" color="#4caf50" />
-        <StatCard title="运行中" value={stats.running_instances} icon="⚡" color="#ff9800" />
-        <StatCard title="已共享" value={stats.shared_instances} icon="🔗" color="#9c27b0" />
-      </div>
+    <Spin spinning={loading}>
+      <Title level={2}>欢迎，{user?.username}！</Title>
+      <Text type="secondary">这里是您的 Incus 管理面板概览。</Text>
 
-      <div style={{ marginTop: 40 }}>
-        <h2>快捷操作</h2>
-        <div style={{ display: 'flex', gap: 15, marginTop: 15 }}>
-          <a href="/hosts" style={{ padding: '15px 25px', backgroundColor: '#2196f3', color: 'white', textDecoration: 'none', borderRadius: 8, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-            🖥️ 管理主机
-          </a>
-          <a href="/instances" style={{ padding: '15px 25px', backgroundColor: '#4caf50', color: 'white', textDecoration: 'none', borderRadius: 8, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-            📦 创建实例
-          </a>
-          <a href="/shared" style={{ padding: '15px 25px', backgroundColor: '#9c27b0', color: 'white', textDecoration: 'none', borderRadius: 8, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-            🔗 共享实例
-          </a>
-        </div>
-      </div>
+      <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
+        {statCards.map((card) => (
+          <Col key={card.key} xs={24} sm={12} lg={6}>
+            <Card>
+              <Statistic
+                title={card.title}
+                value={stats[card.key]}
+                prefix={card.icon}
+                valueStyle={{ color: card.color }}
+              />
+            </Card>
+          </Col>
+        ))}
+      </Row>
 
-      <div style={{ marginTop: 40, padding: 20, backgroundColor: '#f5f5f5', borderRadius: 8 }}>
-        <h3>系统信息</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, marginTop: 15 }}>
-          <div><strong>用户：</strong> {user?.username}</div>
-          <div><strong>邮箱：</strong> {user?.email}</div>
-          <div><strong>角色：</strong> {user?.role}</div>
-          <div><strong>服务器时间：</strong> {new Date().toLocaleString('zh-CN')}</div>
-        </div>
-      </div>
-    </div>
+      <Title level={4} style={{ marginTop: 32 }}>快捷操作</Title>
+      <Space wrap style={{ marginTop: 8 }}>
+        <Button type="primary" icon={<CloudServerOutlined />} onClick={() => navigate('/hosts')}>
+          管理主机
+        </Button>
+        <Button type="primary" icon={<AppstoreOutlined />} onClick={() => navigate('/instances')}>
+          创建实例
+        </Button>
+        <Button icon={<ShareAltOutlined />} onClick={() => navigate('/shared')}>
+          共享实例
+        </Button>
+      </Space>
+
+      <Card title="系统信息" style={{ marginTop: 32 }}>
+        <Descriptions bordered column={2}>
+          <Descriptions.Item label="用户">{user?.username}</Descriptions.Item>
+          <Descriptions.Item label="邮箱">{user?.email}</Descriptions.Item>
+          <Descriptions.Item label="角色">{user?.role}</Descriptions.Item>
+          <Descriptions.Item label="服务器时间">
+            {new Date().toLocaleString('zh-CN')}
+          </Descriptions.Item>
+        </Descriptions>
+      </Card>
+    </Spin>
   );
 };
-
-const StatCard = ({ title, value, icon, color }) => (
-  <div style={{
-    padding: 25,
-    backgroundColor: 'white',
-    borderRadius: 12,
-    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-    textAlign: 'center',
-    borderLeft: `4px solid ${color}`
-  }}>
-    <div style={{ fontSize: 32, marginBottom: 10 }}>{icon}</div>
-    <h3 style={{ margin: 0, color: '#666', fontSize: 14, textTransform: 'uppercase' }}>{title}</h3>
-    <p style={{ fontSize: 36, fontWeight: 'bold', margin: '10px 0', color }}>{value}</p>
-  </div>
-);
 
 export default DashboardPage;

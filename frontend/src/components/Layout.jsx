@@ -1,79 +1,117 @@
 import { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { Layout as AntLayout, Menu, Button, Dropdown, Switch, Space } from 'antd';
+import {
+  DashboardOutlined,
+  CloudServerOutlined,
+  AppstoreOutlined,
+  ShareAltOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  UserOutlined,
+  LogoutOutlined,
+  BulbOutlined,
+} from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
-import { Link } from 'react-router-dom';
+import { useTheme } from '../theme/ThemeContext';
+
+const { Header, Sider, Content } = AntLayout;
+
+const menuItems = [
+  { key: '/dashboard', icon: <DashboardOutlined />, label: <Link to="/dashboard">仪表盘</Link> },
+  { key: '/hosts', icon: <CloudServerOutlined />, label: <Link to="/hosts">主机</Link> },
+  { key: '/instances', icon: <AppstoreOutlined />, label: <Link to="/instances">实例</Link> },
+  { key: '/shared', icon: <ShareAltOutlined />, label: <Link to="/shared">共享</Link> },
+];
 
 const Layout = ({ children }) => {
   const { user, logout } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { themeMode, toggleTheme } = useTheme();
+  const location = useLocation();
+  const [collapsed, setCollapsed] = useState(false);
 
   if (!user) {
     return null;
   }
 
+  const userMenuItems = [
+    {
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: '退出登录',
+      onClick: logout,
+    },
+  ];
+
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
-      {/* 侧边栏 */}
-      <div style={{ 
-        width: sidebarOpen ? 250 : 60, 
-        backgroundColor: '#1a1a2e', 
-        color: 'white',
-        transition: 'width 0.3s',
-        overflow: 'hidden',
-        position: 'fixed',
-        height: '100vh',
-        left: 0,
-        top: 0
-      }}>
-        <div style={{ padding: 15, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          {sidebarOpen && <h2 style={{ margin: 0, fontSize: 18 }}>Incus 管理器</h2>}
-          <button 
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: 16 }}
-          >
-            {sidebarOpen ? '←' : '→'}
-          </button>
+    <AntLayout style={{ minHeight: '100vh' }}>
+      <Sider
+        collapsible
+        collapsed={collapsed}
+        onCollapse={setCollapsed}
+        trigger={null}
+        width={220}
+        theme={themeMode === 'dark' ? 'dark' : 'light'}
+      >
+        <div
+          style={{
+            height: 64,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontWeight: 600,
+            fontSize: collapsed ? 14 : 16,
+            overflow: 'hidden',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {collapsed ? 'Incus' : 'Incus 管理器'}
         </div>
-        
-        <nav style={{ padding: 10 }}>
-          <Link to="/dashboard" style={{ display: 'block', padding: 10, color: 'white', textDecoration: 'none', borderRadius: 4 }}>
-            {sidebarOpen ? '📊 仪表盘' : '📊'}
-          </Link>
-          <Link to="/hosts" style={{ display: 'block', padding: 10, color: 'white', textDecoration: 'none', borderRadius: 4 }}>
-            {sidebarOpen ? '🖥️ 主机' : '🖥️'}
-          </Link>
-          <Link to="/instances" style={{ display: 'block', padding: 10, color: 'white', textDecoration: 'none', borderRadius: 4 }}>
-            {sidebarOpen ? '📦 实例' : '📦'}
-          </Link>
-          <Link to="/shared" style={{ display: 'block', padding: 10, color: 'white', textDecoration: 'none', borderRadius: 4 }}>
-            {sidebarOpen ? '🔗 共享' : '🔗'}
-          </Link>
-        </nav>
-
-        <div style={{ position: 'absolute', bottom: 20, left: 10, right: 10 }}>
-          {sidebarOpen && <p style={{ margin: '0 0 10px 0', fontSize: 12, opacity: 0.7 }}>{user.username}</p>}
-          <button 
-            onClick={logout}
-            style={{ 
-              width: '100%', 
-              padding: '8px 0', 
-              backgroundColor: '#f44336', 
-              color: 'white', 
-              border: 'none', 
-              borderRadius: 4, 
-              cursor: 'pointer',
-              fontSize: 14
-            }}
-          >
-            {sidebarOpen ? '退出登录' : '⏻'}
-          </button>
-        </div>
-      </div>
-
-      {/* 主内容区 */}
-      <div style={{ flex: 1, marginLeft: sidebarOpen ? 250 : 60, padding: 20, transition: 'margin-left 0.3s' }}>
-        {children}
-      </div>
-    </div>
+        <Menu
+          mode="inline"
+          selectedKeys={[location.pathname]}
+          items={menuItems}
+          theme={themeMode === 'dark' ? 'dark' : 'light'}
+        />
+      </Sider>
+      <AntLayout>
+        <Header
+          style={{
+            padding: '0 24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderBottom: '1px solid rgba(5, 5, 5, 0.06)',
+          }}
+          theme={themeMode === 'dark' ? 'dark' : 'light'}
+        >
+          <Button
+            type="text"
+            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            onClick={() => setCollapsed(!collapsed)}
+          />
+          <Space size="middle">
+            <Space size="small">
+              <BulbOutlined />
+              <Switch
+                checked={themeMode === 'dark'}
+                onChange={toggleTheme}
+                checkedChildren="暗"
+                unCheckedChildren="亮"
+              />
+            </Space>
+            <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+              <Button type="text" icon={<UserOutlined />}>
+                {user.username}
+              </Button>
+            </Dropdown>
+          </Space>
+        </Header>
+        <Content style={{ padding: 24 }}>
+          {children}
+        </Content>
+      </AntLayout>
+    </AntLayout>
   );
 };
 
