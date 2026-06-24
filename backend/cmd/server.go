@@ -56,6 +56,16 @@ func main() {
 	// API routes
 	apiHandler := middleware.CORSMiddleware()(middleware.LoggingMiddleware(h.RegisterRoutes()))
 	router.Handle("/api/", apiHandler)
+
+	// WebSocket
+	router.Handle("/ws", hub)
+
+	// Direct test route
+	router.HandleFunc("/api/test", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"ok":true}`))
+	})
 	router.Handle("/ws", hub)
 
 	port := os.Getenv("PORT")
