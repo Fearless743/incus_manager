@@ -4,9 +4,11 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"incus-manager/internal/config"
 	"incus-manager/internal/handler"
+	"incus-manager/internal/middleware"
 	"incus-manager/internal/service"
 	"incus-manager/internal/websocket"
 	"gorm.io/driver/postgres"
@@ -36,27 +38,34 @@ func main() {
 
 	router := http.NewServeMux()
 
-	// Health check (public, no middleware)
+	// Health check
 	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"status":"healthy","service":"incus-manager"}`))
 	})
 
-	// Static files - serve frontend (public, no middleware)
-	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" && r.URL.Path != "" {
-			http.NotFound(w, r)
-			return
-		}
-		staticFileHandler()(w, r)
-	})
-
-	// API routes
-	router.Handle("/api/", h.RegisterRoutes())
-
 	// WebSocket
 	router.Handle("/ws", hub)
+
+	// API routes
+	auth := middleware.Authenticate(authService)
+	router.HandleFunc("POST /api/login", h.Login)
+	router.HandleFunc("POST /api/users", h.CreateUser)
+	router.HandleFunc("POST /api/hosts", auth(h.AddHost))
+	router.HandleFunc("GET /api/hosts", auth(h.GetHosts))
+	router.HandleFunc("GET /api/instances", auth(h.GetInstances))
+	router.HandleFunc("POST /api/instances", auth(h.CreateInstance))
+	router.HandleFunc("DELETE /api/instances/", auth(h.DeleteInstance))
+	router.HandleFunc("POST /api/instances/start/", auth(h.StartInstance))
+	router.HandleFunc("POST /api/instances/stop/", auth(h.StopInstance))
+	router.HandleFunc("POST /api/share", auth(h.ShareInstance))
+	router.HandleFunc("DELETE /api/share/", auth(h.RevokeShare))
+	router.HandleFunc("GET /api/instances/images", auth(h.GetImages))
+	router.HandleFunc("GET /api/stats", auth(h.GetStats))
+
+	// Static files
+	router.HandleFunc("/", staticFileHandler())
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -67,9 +76,6 @@ func main() {
 	}
 
 	log.Printf("Server starting on port %s", port)
-	log.Printf("Frontend: http://localhost:%s", port)
-	log.Printf("API: http://localhost:%s/api", port)
-	log.Printf("Health: http://localhost:%s/health", port)
 
 	if err := http.ListenAndServe(":"+port, router); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
@@ -78,14 +84,19 @@ func main() {
 
 func staticFileHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" && !strings.HasPrefix(r.URL.Path, "/assets/") &&
+			!strings.HasSuffix(r.URL.Path, ".html") && !strings.HasSuffix(r.URL.Path, ".css") &&
+			!strings.HasSuffix(r.URL.Path, ".js") && !strings.HasSuffix(r.URL.Path, ".svg") {
+			http.NotFound(w, r)
+			return
+		}
+
 		path := r.URL.Path
 		if path == "/" {
 			path = "/index.html"
 		}
 
-		cleanPath := path[1:]
-		filePath := "/root/dist/" + cleanPath
-
+		filePath := "/root/dist" + path
 		data, err := os.ReadFile(filePath)
 		if err != nil {
 			indexData, err2 := os.ReadFile("/root/dist/index.html")
@@ -104,23 +115,23 @@ func staticFileHandler() http.HandlerFunc {
 }
 
 func getContentType(path string) string {
-	ext := path[len(path)-4:]
-	switch ext {
-	case ".html":
+	lower := strings.ToLower(path)
+	switch {
+	case strings.HasSuffix(lower, ".html"):
 		return "text/html; charset=utf-8"
-	case ".css":
+	case strings.HasSuffix(lower, ".css"):
 		return "text/css"
-	case ".js":
+	case strings.HasSuffix(lower, ".js"):
 		return "application/javascript"
-	case ".json":
+	case strings.HasSuffix(lower, ".json"):
 		return "application/json"
-	case ".png":
+	case strings.HasSuffix(lower, ".png"):
 		return "image/png"
-	case ".jpg", ".jpeg":
+	case strings.HasSuffix(lower, ".jpg"), strings.HasSuffix(lower, ".jpeg"):
 		return "image/jpeg"
-	case ".svg":
+	case strings.HasSuffix(lower, ".svg"):
 		return "image/svg+xml"
-	case ".ico":
+	case strings.HasSuffix(lower, ".ico"):
 		return "image/x-icon"
 	default:
 		return "application/octet-stream"

@@ -32,29 +32,19 @@ func NewHandler(auth *service.AuthService, user *service.UserService, host *serv
 	}
 }
 
-func (h *Handler) RegisterRoutes() http.Handler {
-	mux := http.NewServeMux()
-
-	// Public routes
-	mux.HandleFunc("POST /api/login", h.login)
-	mux.HandleFunc("POST /api/users", h.createUser)
-
-	// Protected routes
-	auth := middleware.Authenticate(h.authService)
-	mux.HandleFunc("POST /api/hosts", auth(h.addHost))
-	mux.HandleFunc("GET /api/hosts", auth(h.getHosts))
-	mux.HandleFunc("GET /api/instances", auth(h.getInstances))
-	mux.HandleFunc("POST /api/instances", auth(h.createInstance))
-	mux.HandleFunc("DELETE /api/instances/", auth(h.deleteInstance))
-	mux.HandleFunc("POST /api/instances/start/", auth(h.startInstance))
-	mux.HandleFunc("POST /api/instances/stop/", auth(h.stopInstance))
-	mux.HandleFunc("POST /api/share", auth(h.shareInstance))
-	mux.HandleFunc("DELETE /api/share/", auth(h.revokeShare))
-	mux.HandleFunc("GET /api/instances/images", auth(h.getImages))
-	mux.HandleFunc("GET /api/stats", auth(h.getStats))
-
-	return mux
-}
+func (h *Handler) Login(w http.ResponseWriter, r *http.Request) { h.login(w, r) }
+func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) { h.createUser(w, r) }
+func (h *Handler) AddHost(w http.ResponseWriter, r *http.Request) { h.addHost(w, r) }
+func (h *Handler) GetHosts(w http.ResponseWriter, r *http.Request) { h.getHosts(w, r) }
+func (h *Handler) GetInstances(w http.ResponseWriter, r *http.Request) { h.getInstances(w, r) }
+func (h *Handler) CreateInstance(w http.ResponseWriter, r *http.Request) { h.createInstance(w, r) }
+func (h *Handler) DeleteInstance(w http.ResponseWriter, r *http.Request) { h.deleteInstance(w, r) }
+func (h *Handler) StartInstance(w http.ResponseWriter, r *http.Request) { h.startInstance(w, r) }
+func (h *Handler) StopInstance(w http.ResponseWriter, r *http.Request) { h.stopInstance(w, r) }
+func (h *Handler) ShareInstance(w http.ResponseWriter, r *http.Request) { h.shareInstance(w, r) }
+func (h *Handler) RevokeShare(w http.ResponseWriter, r *http.Request) { h.revokeShare(w, r) }
+func (h *Handler) GetImages(w http.ResponseWriter, r *http.Request) { h.getImages(w, r) }
+func (h *Handler) GetStats(w http.ResponseWriter, r *http.Request) { h.getStats(w, r) }
 
 func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 	var req struct {
