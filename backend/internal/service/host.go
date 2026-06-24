@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"strings"
 
 	"gorm.io/gorm"
 	"incus-manager/internal/model"
@@ -17,6 +18,7 @@ func NewHostService(db *gorm.DB, factory *IncusServiceFactory) *HostService {
 }
 
 func (s *HostService) AddHost(name, address, certificate string, userID uint) (*model.Host, error) {
+	address = normalizeAddress(address)
 	host := &model.Host{
 		Name:        name,
 		Address:     address,
@@ -35,6 +37,7 @@ func (s *HostService) AddHost(name, address, certificate string, userID uint) (*
 }
 
 func (s *HostService) TestHost(address, certificate string) (bool, string, error) {
+	address = normalizeAddress(address)
 	client := NewIncusClient(address, certificate, "")
 	_, err := client.doRequest("GET", "/1.0", nil)
 	if err != nil {
@@ -44,6 +47,7 @@ func (s *HostService) TestHost(address, certificate string) (bool, string, error
 }
 
 func (s *HostService) UpdateHost(hostID, userID uint, name, address, certificate string) (*model.Host, error) {
+	address = normalizeAddress(address)
 	var host model.Host
 	if err := s.DB.First(&host, hostID).Error; err != nil {
 		return nil, errors.New("主机不存在")
@@ -78,6 +82,17 @@ func (s *HostService) DeleteHost(hostID, userID uint) error {
 	}
 
 	return s.DB.Delete(&host).Error
+}
+
+func normalizeAddress(addr string) string {
+	addr = strings.TrimSpace(addr)
+	if addr == "" {
+		return addr
+	}
+	if !strings.Contains(addr, "://") {
+		addr = "https://" + addr
+	}
+	return addr
 }
 
 func (s *HostService) GetHostsByUser(userID uint) ([]model.Host, error) {

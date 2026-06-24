@@ -109,7 +109,7 @@ const HostsPage = () => {
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} required style={{ width: '100%', padding: 8, border: '1px solid #ddd', borderRadius: 4, boxSizing: 'border-box' }} />
           </div>
           <div style={{ marginBottom: 10 }}>
-            <label>地址（例如：https://192.168.1.100:8443）：</label>
+            <label>地址（IP:端口，如 192.168.1.100:8443）：</label>
             <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} required style={{ width: '100%', padding: 8, border: '1px solid #ddd', borderRadius: 4, boxSizing: 'border-box' }} />
           </div>
           <div style={{ marginBottom: 10 }}>
