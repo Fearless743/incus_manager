@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"errors"
 
 	"gorm.io/gorm"
@@ -23,18 +24,19 @@ func (s *InstanceService) CreateInstance(config model.InstanceConfig, userID uin
 		return nil, err
 	}
 
-	// Allocate IP
 	mappingIP, err := s.IPManager.AllocateIP(host.ID)
 	if err != nil {
 		return nil, errors.New("failed to allocate IP")
 	}
+
+	portsJSON, _ := json.Marshal(config.Ports)
 
 	instance := &model.Instance{
 		Name:           config.Name,
 		HostID:         host.ID,
 		UserID:         userID,
 		Image:          config.Image,
-		Ports:          config.Ports,
+		Ports:          string(portsJSON),
 		CPU:            config.CPU,
 		Memory:         config.Memory,
 		Disk:           config.Disk,
@@ -46,7 +48,6 @@ func (s *InstanceService) CreateInstance(config model.InstanceConfig, userID uin
 		ExpiryDate:     config.ExpiryDate,
 	}
 
-	// Get per-host Incus client and create instance
 	client := s.IncusFactory.GetClient(host.ID, host.Address, host.Certificate)
 	incusConfig := model.InstanceConfig{
 		Name:          config.Name,
@@ -76,7 +77,7 @@ func (s *InstanceService) CreateInstance(config model.InstanceConfig, userID uin
 
 func (s *InstanceService) GetInstancesByUser(userID uint) ([]model.Instance, error) {
 	var instances []model.Instance
-	if err := s.DB.Where("user_id = ? OR shared_with @> ARRAY[?]", userID, userID).Find(&instances).Error; err != nil {
+	if err := s.DB.Where("user_id = ? OR ?", userID, userID).Find(&instances).Error; err != nil {
 		return nil, errors.New("failed to get instances")
 	}
 	return instances, nil

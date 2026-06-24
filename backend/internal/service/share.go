@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -23,13 +24,18 @@ func (s *SharedService) ShareInstance(instanceID, sharedWithUserID uint, expires
 		return errors.New("instance not found")
 	}
 
-	for _, uid := range instance.SharedWith {
+	var sharedWith []uint
+	json.Unmarshal([]byte(instance.SharedWith), &sharedWith)
+
+	for _, uid := range sharedWith {
 		if uid == sharedWithUserID {
 			return errors.New("instance already shared with this user")
 		}
 	}
 
-	instance.SharedWith = append(instance.SharedWith, sharedWithUserID)
+	sharedWith = append(sharedWith, sharedWithUserID)
+	sharedWithJSON, _ := json.Marshal(sharedWith)
+	instance.SharedWith = string(sharedWithJSON)
 
 	if err := s.DB.Save(&instance).Error; err != nil {
 		return errors.New("failed to share instance")
@@ -44,13 +50,18 @@ func (s *SharedService) RevokeShare(instanceID, sharedWithUserID uint) error {
 		return errors.New("instance not found")
 	}
 
+	var sharedWith []uint
+	json.Unmarshal([]byte(instance.SharedWith), &sharedWith)
+
 	newSharedWith := []uint{}
-	for _, uid := range instance.SharedWith {
+	for _, uid := range sharedWith {
 		if uid != sharedWithUserID {
 			newSharedWith = append(newSharedWith, uid)
 		}
 	}
-	instance.SharedWith = newSharedWith
+
+	sharedWithJSON, _ := json.Marshal(newSharedWith)
+	instance.SharedWith = string(sharedWithJSON)
 
 	if err := s.DB.Save(&instance).Error; err != nil {
 		return errors.New("failed to revoke share")
@@ -61,7 +72,7 @@ func (s *SharedService) RevokeShare(instanceID, sharedWithUserID uint) error {
 
 func (s *SharedService) GetSharedInstances(userID uint) ([]model.Instance, error) {
 	var instances []model.Instance
-	if err := s.DB.Where("shared_with @> ARRAY[?]", userID).Find(&instances).Error; err != nil {
+	if err := s.DB.Find(&instances).Error; err != nil {
 		return nil, errors.New("failed to get shared instances")
 	}
 	return instances, nil
