@@ -37,22 +37,19 @@ func main() {
 
 	router := http.NewServeMux()
 
-	// API routes (already include /api/ prefix)
-	apiHandler := middleware.CORSMiddleware()(middleware.LoggingMiddleware(h.RegisterRoutes()))
-	router.Handle("/", apiHandler)
-
-	// WebSocket
-	router.Handle("/ws", hub)
-
-	// Health check
+	// Health check (public, no middleware)
 	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"status":"healthy","service":"incus-manager"}`))
 	})
 
-	// Static files - serve frontend
+	// Static files - serve frontend (public, no middleware)
 	router.Handle("GET /", staticFileHandler())
+
+	// API routes (include /api/ prefix internally)
+	apiHandler := middleware.CORSMiddleware()(middleware.LoggingMiddleware(h.RegisterRoutes()))
+	router.Handle("/", apiHandler)
 
 	port := os.Getenv("PORT")
 	if port == "" {
