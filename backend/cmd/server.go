@@ -54,8 +54,7 @@ func main() {
 	})
 
 	// API routes
-	apiHandler := middleware.CORSMiddleware()(middleware.LoggingMiddleware(h.RegisterRoutes()))
-	router.Handle("/api/", apiHandler)
+	router.Handle("/api/", middleware.CORSMiddleware()(middleware.LoggingMiddleware(h.RegisterRoutes())))
 
 	// WebSocket
 	router.Handle("/ws", hub)
