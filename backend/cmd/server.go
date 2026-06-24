@@ -66,7 +66,6 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"ok":true}`))
 	})
-	router.Handle("/ws", hub)
 
 	port := os.Getenv("PORT")
 	if port == "" {
