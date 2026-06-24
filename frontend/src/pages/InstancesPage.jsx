@@ -24,7 +24,7 @@ const InstancesPage = () => {
       const response = await instanceAPI.getAll();
       setInstances(response.data);
     } catch (err) {
-      console.error('Failed to load instances:', err);
+      console.error('加载实例失败:', err);
     }
   };
 
@@ -33,7 +33,7 @@ const InstancesPage = () => {
       const response = await hostAPI.getAll();
       setHosts(response.data);
     } catch (err) {
-      console.error('Failed to load hosts:', err);
+      console.error('加载主机失败:', err);
     }
   };
 
@@ -42,7 +42,7 @@ const InstancesPage = () => {
       const response = await instanceAPI.getImages();
       setImages(response.data);
     } catch (err) {
-      console.error('Failed to load images:', err);
+      console.error('加载镜像失败:', err);
     }
   };
 
@@ -70,17 +70,17 @@ const InstancesPage = () => {
       setHostId('');
       loadInstances();
     } catch (err) {
-      console.error('Failed to create instance:', err);
+      console.error('创建实例失败:', err);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this instance?')) return;
+    if (!confirm('确定要删除此实例吗？')) return;
     try {
       await instanceAPI.delete(id);
       loadInstances();
     } catch (err) {
-      console.error('Failed to delete instance:', err);
+      console.error('删除实例失败:', err);
     }
   };
 
@@ -89,7 +89,7 @@ const InstancesPage = () => {
       await instanceAPI.start(id);
       loadInstances();
     } catch (err) {
-      console.error('Failed to start instance:', err);
+      console.error('启动实例失败:', err);
     }
   };
 
@@ -98,7 +98,7 @@ const InstancesPage = () => {
       await instanceAPI.stop(id);
       loadInstances();
     } catch (err) {
-      console.error('Failed to stop instance:', err);
+      console.error('停止实例失败:', err);
     }
   };
 
@@ -111,25 +111,36 @@ const InstancesPage = () => {
     }
   };
 
+  const getStatusText = (status) => {
+    switch(status) {
+      case 'running': return '运行中';
+      case 'stopped': return '已停止';
+      case 'creating': return '创建中';
+      case 'deleted': return '已删除';
+      case 'paused': return '已暂停';
+      default: return status?.toUpperCase() || '未知';
+    }
+  };
+
   return (
     <div style={{ padding: 20 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
-        <h1>Instances</h1>
+        <h1>实例管理</h1>
         <button onClick={() => setShowForm(!showForm)} style={{ padding: '10px 20px', backgroundColor: '#4caf50', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
-          Create Instance
+          创建实例
         </button>
       </div>
 
       {showForm && (
         <form onSubmit={handleSubmit} style={{ marginBottom: 20, padding: 20, border: '1px solid #ccc', borderRadius: 8, backgroundColor: '#f9f9f9' }}>
-          <h3>New Instance</h3>
+          <h3>新建实例</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 }}>
             <div>
-              <label>Name:</label>
+              <label>名称：</label>
               <input type="text" value={name} onChange={(e) => setName(e.target.value)} required style={{ width: '100%', padding: 8, border: '1px solid #ddd', borderRadius: 4 }} />
             </div>
             <div>
-              <label>Image:</label>
+              <label>镜像：</label>
               <select value={image} onChange={(e) => setImage(e.target.value)} required style={{ width: '100%', padding: 8, border: '1px solid #ddd', borderRadius: 4 }}>
                 {images.map(img => (
                   <option key={img} value={img}>{img}</option>
@@ -137,30 +148,30 @@ const InstancesPage = () => {
               </select>
             </div>
             <div>
-              <label>Host:</label>
+              <label>主机：</label>
               <select value={hostId} onChange={(e) => setHostId(e.target.value)} required style={{ width: '100%', padding: 8, border: '1px solid #ddd', borderRadius: 4 }}>
-                <option value="">Select host</option>
+                <option value="">选择主机</option>
                 {hosts.map(host => (
                   <option key={host.id} value={host.id}>{host.name}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label>CPU Cores:</label>
+              <label>CPU 核心数：</label>
               <input type="number" value={cpu} onChange={(e) => setCpu(parseInt(e.target.value))} min="1" required style={{ width: '100%', padding: 8, border: '1px solid #ddd', borderRadius: 4 }} />
             </div>
             <div>
-              <label>Memory (MB):</label>
+              <label>内存（MB）：</label>
               <input type="number" value={memory} onChange={(e) => setMemory(parseInt(e.target.value))} min="256" required style={{ width: '100%', padding: 8, border: '1px solid #ddd', borderRadius: 4 }} />
             </div>
             <div>
-              <label>Disk (GB):</label>
+              <label>磁盘（GB）：</label>
               <input type="number" value={disk} onChange={(e) => setDisk(parseInt(e.target.value))} min="1" required style={{ width: '100%', padding: 8, border: '1px solid #ddd', borderRadius: 4 }} />
             </div>
           </div>
           <div style={{ marginTop: 15 }}>
-            <button type="submit" style={{ padding: '10px 20px', backgroundColor: '#4caf50', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Create Instance</button>
-            <button type="button" onClick={() => setShowForm(false)} style={{ marginLeft: 10, padding: '10px 20px', backgroundColor: '#9e9e9e', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+            <button type="submit" style={{ padding: '10px 20px', backgroundColor: '#4caf50', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>创建实例</button>
+            <button type="button" onClick={() => setShowForm(false)} style={{ marginLeft: 10, padding: '10px 20px', backgroundColor: '#9e9e9e', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>取消</button>
           </div>
         </form>
       )}
@@ -178,24 +189,24 @@ const InstancesPage = () => {
                 fontSize: 12,
                 fontWeight: 'bold'
               }}>
-                {instance.status.toUpperCase()}
+                {getStatusText(instance.status)}
               </span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 15 }}>
-              <div><strong>Image:</strong> {instance.image}</div>
-              <div><strong>CPU:</strong> {instance.cpu} cores</div>
-              <div><strong>Memory:</strong> {instance.memory} MB</div>
-              <div><strong>Disk:</strong> {instance.disk} GB</div>
+              <div><strong>镜像：</strong> {instance.image}</div>
+              <div><strong>CPU：</strong> {instance.cpu} 核</div>
+              <div><strong>内存：</strong> {instance.memory} MB</div>
+              <div><strong>磁盘：</strong> {instance.disk} GB</div>
             </div>
             {instance.mapping_ip && (
               <div style={{ marginBottom: 15, padding: 10, backgroundColor: '#e3f2fd', borderRadius: 4 }}>
-                <strong>Mapping IP:</strong> {instance.mapping_ip}
+                <strong>映射 IP：</strong> {instance.mapping_ip}
               </div>
             )}
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => handleStart(instance.id)} style={{ padding: '8px 16px', backgroundColor: '#4caf50', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Start</button>
-              <button onClick={() => handleStop(instance.id)} style={{ padding: '8px 16px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Stop</button>
-              <button onClick={() => handleDelete(instance.id)} style={{ padding: '8px 16px', backgroundColor: '#ff9800', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Delete</button>
+              <button onClick={() => handleStart(instance.id)} style={{ padding: '8px 16px', backgroundColor: '#4caf50', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>启动</button>
+              <button onClick={() => handleStop(instance.id)} style={{ padding: '8px 16px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>停止</button>
+              <button onClick={() => handleDelete(instance.id)} style={{ padding: '8px 16px', backgroundColor: '#ff9800', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>删除</button>
             </div>
           </div>
         ))}

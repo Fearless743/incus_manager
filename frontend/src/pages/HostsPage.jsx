@@ -17,7 +17,7 @@ const HostsPage = () => {
       const response = await hostAPI.getAll();
       setHosts(response.data);
     } catch (err) {
-      console.error('Failed to load hosts:', err);
+      console.error('加载主机失败:', err);
     }
   };
 
@@ -31,45 +31,45 @@ const HostsPage = () => {
       setCertificate('');
       loadHosts();
     } catch (err) {
-      console.error('Failed to add host:', err);
+      console.error('添加主机失败:', err);
     }
   };
 
   return (
     <div style={{ padding: 20 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
-        <h1>Hosts</h1>
+        <h1>主机管理</h1>
         <button 
           onClick={() => setShowForm(!showForm)}
           style={{ padding: '10px 20px', backgroundColor: '#4caf50', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
         >
-          Add Host
+          添加主机
         </button>
       </div>
 
       {showForm && (
         <form onSubmit={handleSubmit} style={{ marginBottom: 20, padding: 20, border: '1px solid #ccc', borderRadius: 8, backgroundColor: '#f9f9f9' }}>
-          <h3 style={{ marginTop: 0 }}>New Host</h3>
+          <h3 style={{ marginTop: 0 }}>新建主机</h3>
           <div style={{ marginBottom: 10 }}>
-            <label>Name:</label>
+            <label>名称：</label>
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} required style={{ width: '100%', padding: 8, border: '1px solid #ddd', borderRadius: 4, boxSizing: 'border-box' }} />
           </div>
           <div style={{ marginBottom: 10 }}>
-            <label>Address (e.g., https://192.168.1.100:8443):</label>
+            <label>地址（例如：https://192.168.1.100:8443）：</label>
             <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} required style={{ width: '100%', padding: 8, border: '1px solid #ddd', borderRadius: 4, boxSizing: 'border-box' }} />
           </div>
           <div style={{ marginBottom: 10 }}>
-            <label>Client Certificate (PEM format):</label>
+            <label>客户端证书（PEM 格式）：</label>
             <textarea value={certificate} onChange={(e) => setCertificate(e.target.value)} required rows={4} style={{ width: '100%', padding: 8, border: '1px solid #ddd', borderRadius: 4, boxSizing: 'border-box', fontFamily: 'monospace', fontSize: 12 }} />
           </div>
-          <button type="submit" style={{ padding: '10px 20px', backgroundColor: '#4caf50', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Add Host</button>
+          <button type="submit" style={{ padding: '10px 20px', backgroundColor: '#4caf50', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>添加主机</button>
         </form>
       )}
 
       {hosts.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>
           <p style={{ fontSize: 48 }}>🖥️</p>
-          <p>No hosts added yet. Click "Add Host" to get started.</p>
+          <p>尚未添加任何主机。点击"添加主机"开始使用。</p>
         </div>
       ) : (
         <div style={{ display: 'grid', gap: 15 }}>
@@ -85,12 +85,12 @@ const HostsPage = () => {
                   fontSize: 12,
                   fontWeight: 'bold'
                 }}>
-                  {host.status.toUpperCase()}
+                  {host.status === 'active' ? '在线' : host.status.toUpperCase()}
                 </span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div><strong>Address:</strong> {host.address}</div>
-                <div><strong>Project:</strong> {host.project}</div>
+                <div><strong>地址：</strong> {host.address}</div>
+                <div><strong>项目：</strong> {host.project}</div>
               </div>
             </div>
           ))}

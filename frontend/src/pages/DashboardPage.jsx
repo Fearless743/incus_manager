@@ -21,50 +21,50 @@ const DashboardPage = () => {
       const response = await statsAPI.get();
       setStats(response.data);
     } catch (err) {
-      console.error('Failed to load stats:', err);
+      console.error('加载统计失败:', err);
     } finally {
       setLoading(false);
     }
   };
 
   if (loading) {
-    return <div style={{ padding: 20 }}>Loading...</div>;
+    return <div style={{ padding: 20 }}>加载中...</div>;
   }
 
   return (
     <div style={{ padding: 20 }}>
-      <h1>Welcome, {user?.username}!</h1>
-      <p style={{ color: '#666' }}>Here is an overview of your Incus management panel.</p>
+      <h1>欢迎，{user?.username}！</h1>
+      <p style={{ color: '#666' }}>这里是您的 Incus 管理面板概览。</p>
       
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, marginTop: 30 }}>
-        <StatCard title="Total Hosts" value={stats.total_hosts} icon="🖥️" color="#2196f3" />
-        <StatCard title="Total Instances" value={stats.total_instances} icon="📦" color="#4caf50" />
-        <StatCard title="Running" value={stats.running_instances} icon="⚡" color="#ff9800" />
-        <StatCard title="Shared" value={stats.shared_instances} icon="🔗" color="#9c27b0" />
+        <StatCard title="主机总数" value={stats.total_hosts} icon="🖥️" color="#2196f3" />
+        <StatCard title="实例总数" value={stats.total_instances} icon="📦" color="#4caf50" />
+        <StatCard title="运行中" value={stats.running_instances} icon="⚡" color="#ff9800" />
+        <StatCard title="已共享" value={stats.shared_instances} icon="🔗" color="#9c27b0" />
       </div>
 
       <div style={{ marginTop: 40 }}>
-        <h2>Quick Actions</h2>
+        <h2>快捷操作</h2>
         <div style={{ display: 'flex', gap: 15, marginTop: 15 }}>
           <a href="/hosts" style={{ padding: '15px 25px', backgroundColor: '#2196f3', color: 'white', textDecoration: 'none', borderRadius: 8, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-            🖥️ Manage Hosts
+            🖥️ 管理主机
           </a>
           <a href="/instances" style={{ padding: '15px 25px', backgroundColor: '#4caf50', color: 'white', textDecoration: 'none', borderRadius: 8, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-            📦 Create Instance
+            📦 创建实例
           </a>
           <a href="/shared" style={{ padding: '15px 25px', backgroundColor: '#9c27b0', color: 'white', textDecoration: 'none', borderRadius: 8, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-            🔗 Share Instances
+            🔗 共享实例
           </a>
         </div>
       </div>
 
       <div style={{ marginTop: 40, padding: 20, backgroundColor: '#f5f5f5', borderRadius: 8 }}>
-        <h3>System Information</h3>
+        <h3>系统信息</h3>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, marginTop: 15 }}>
-          <div><strong>User:</strong> {user?.username}</div>
-          <div><strong>Email:</strong> {user?.email}</div>
-          <div><strong>Role:</strong> {user?.role}</div>
-          <div><strong>Server Time:</strong> {new Date().toLocaleString()}</div>
+          <div><strong>用户：</strong> {user?.username}</div>
+          <div><strong>邮箱：</strong> {user?.email}</div>
+          <div><strong>角色：</strong> {user?.role}</div>
+          <div><strong>服务器时间：</strong> {new Date().toLocaleString('zh-CN')}</div>
         </div>
       </div>
     </div>

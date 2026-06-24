@@ -21,7 +21,7 @@ const LoginPage = () => {
       login(response.data.user, response.data.token);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.error || 'Login failed');
+      setError(err.response?.data?.error || '登录失败');
     } finally {
       setLoading(false);
     }
@@ -36,7 +36,7 @@ const LoginPage = () => {
       boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
       backgroundColor: 'white'
     }}>
-      <h1 style={{ textAlign: 'center', marginBottom: 30 }}>Incus Manager</h1>
+      <h1 style={{ textAlign: 'center', marginBottom: 30 }}>Incus 管理器</h1>
       {error && (
         <div style={{ 
           padding: 10, 
@@ -50,7 +50,7 @@ const LoginPage = () => {
       )}
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: 15 }}>
-          <label style={{ display: 'block', marginBottom: 5, fontWeight: 'bold' }}>Username</label>
+          <label style={{ display: 'block', marginBottom: 5, fontWeight: 'bold' }}>用户名</label>
           <input
             type="text"
             value={username}
@@ -66,7 +66,7 @@ const LoginPage = () => {
           />
         </div>
         <div style={{ marginBottom: 20 }}>
-          <label style={{ display: 'block', marginBottom: 5, fontWeight: 'bold' }}>Password</label>
+          <label style={{ display: 'block', marginBottom: 5, fontWeight: 'bold' }}>密码</label>
           <input
             type="password"
             value={password}
@@ -95,7 +95,7 @@ const LoginPage = () => {
             fontSize: 16
           }}
         >
-          {loading ? 'Logging in...' : 'Login'}
+          {loading ? '登录中...' : '登录'}
         </button>
       </form>
     </div>
