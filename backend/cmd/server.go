@@ -7,7 +7,6 @@ import (
 
 	"incus-manager/internal/config"
 	"incus-manager/internal/handler"
-	"incus-manager/internal/middleware"
 	"incus-manager/internal/service"
 	"incus-manager/internal/websocket"
 	"gorm.io/driver/postgres"
@@ -54,17 +53,10 @@ func main() {
 	})
 
 	// API routes
-	router.Handle("/api/", middleware.CORSMiddleware()(middleware.LoggingMiddleware(h.RegisterRoutes())))
+	router.Handle("/api/", h.RegisterRoutes())
 
 	// WebSocket
 	router.Handle("/ws", hub)
-
-	// Direct test route
-	router.HandleFunc("/api/test", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"ok":true}`))
-	})
 
 	port := os.Getenv("PORT")
 	if port == "" {
