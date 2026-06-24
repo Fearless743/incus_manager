@@ -4,8 +4,9 @@ import (
 	"errors"
 	"strings"
 
-	"gorm.io/gorm"
 	"incus-manager/internal/model"
+
+	"gorm.io/gorm"
 )
 
 type HostService struct {
@@ -17,6 +18,11 @@ func NewHostService(db *gorm.DB, factory *IncusServiceFactory) *HostService {
 	return &HostService{DB: db, IncusFactory: factory}
 }
 
+type HostWithStatus struct {
+	model.Host
+	Status string `json:"status"`
+}
+
 func (s *HostService) AddHost(name, address, certificate string, userID uint) (*model.Host, error) {
 	address = normalizeAddress(address)
 	host := &model.Host{
@@ -24,7 +30,6 @@ func (s *HostService) AddHost(name, address, certificate string, userID uint) (*
 		Address:     address,
 		Certificate: certificate,
 		UserID:      userID,
-		Status:      "active",
 	}
 
 	host.Project = generateProjectName(name, userID)
@@ -84,6 +89,34 @@ func (s *HostService) DeleteHost(hostID, userID uint) error {
 	return s.DB.Delete(&host).Error
 }
 
+func (s *HostService) GetHostsByUser(userID uint) ([]HostWithStatus, error) {
+	var hosts []model.Host
+	if err := s.DB.Where("user_id = ?", userID).Find(&hosts).Error; err != nil {
+		return nil, errors.New("failed to get hosts")
+	}
+
+	result := make([]HostWithStatus, 0, len(hosts))
+	for _, h := range hosts {
+		withStatus := HostWithStatus{Host: h}
+		client := s.IncusFactory.GetClient(h.ID, h.Address, h.Certificate)
+		if err := client.Ping(); err == nil {
+			withStatus.Status = "active"
+		} else {
+			withStatus.Status = "error"
+		}
+		result = append(result, withStatus)
+	}
+	return result, nil
+}
+
+func (s *HostService) GetHostByID(id uint) (*model.Host, error) {
+	var host model.Host
+	if err := s.DB.First(&host, id).Error; err != nil {
+		return nil, errors.New("host not found")
+	}
+	return &host, nil
+}
+
 func normalizeAddress(addr string) string {
 	addr = strings.TrimSpace(addr)
 	if addr == "" {
@@ -93,20 +126,4 @@ func normalizeAddress(addr string) string {
 		addr = "https://" + addr
 	}
 	return addr
-}
-
-func (s *HostService) GetHostsByUser(userID uint) ([]model.Host, error) {
-	var hosts []model.Host
-	if err := s.DB.Where("user_id = ?", userID).Find(&hosts).Error; err != nil {
-		return nil, errors.New("failed to get hosts")
-	}
-	return hosts, nil
-}
-
-func (s *HostService) GetHostByID(id uint) (*model.Host, error) {
-	var host model.Host
-	if err := s.DB.First(&host, id).Error; err != nil {
-		return nil, errors.New("host not found")
-	}
-	return &host, nil
 }

@@ -82,6 +82,7 @@ const Layout = ({ children }) => {
             alignItems: 'center',
             justifyContent: 'space-between',
             borderBottom: '1px solid rgba(5, 5, 5, 0.06)',
+            backgroundColor: themeMode === 'dark' ? '#001529' : '#ffffff',
           }}
           theme={themeMode === 'dark' ? 'dark' : 'light'}
         >

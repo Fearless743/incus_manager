@@ -24,7 +24,7 @@ export const ThemeProvider = ({ children }) => {
       <ConfigProvider
         locale={zhCN}
         theme={{
-          algorithm: themeMode === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
+          algorithm: themeMode === 'dark' ? [theme.darkAlgorithm, theme.compactAlgorithm] : theme.defaultAlgorithm,
           token: {
             colorPrimary: '#1677ff',
             borderRadius: 6,
