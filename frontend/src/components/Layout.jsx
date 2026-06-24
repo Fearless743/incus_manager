@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Layout as AntLayout, Menu, Button, Dropdown, Switch, Space } from 'antd';
 import {
@@ -13,7 +13,6 @@ import {
   BulbOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../theme/ThemeContext';
 
 const { Header, Sider, Content } = AntLayout;
 
@@ -26,9 +25,20 @@ const menuItems = [
 
 const Layout = ({ children }) => {
   const { user, logout } = useAuth();
-  const { themeMode, toggleTheme } = useTheme();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+  const [isDark, setIsDark] = useState(() => {
+    const stored = localStorage.getItem('incus-theme');
+    return stored === 'dark';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('incus-theme', isDark ? 'dark' : 'light');
+  }, [isDark]);
+
+  const handleToggle = () => {
+    setIsDark((prev) => !prev);
+  };
 
   if (!user) {
     return null;
@@ -51,7 +61,7 @@ const Layout = ({ children }) => {
         onCollapse={setCollapsed}
         trigger={null}
         width={220}
-        theme={themeMode === 'dark' ? 'dark' : 'light'}
+        theme={isDark ? 'dark' : 'light'}
       >
         <div
           style={{
@@ -71,7 +81,7 @@ const Layout = ({ children }) => {
           mode="inline"
           selectedKeys={[location.pathname]}
           items={menuItems}
-          theme={themeMode === 'dark' ? 'dark' : 'light'}
+          theme={isDark ? 'dark' : 'light'}
         />
       </Sider>
       <AntLayout>
@@ -82,9 +92,8 @@ const Layout = ({ children }) => {
             alignItems: 'center',
             justifyContent: 'space-between',
             borderBottom: '1px solid rgba(5, 5, 5, 0.06)',
-            backgroundColor: themeMode === 'dark' ? '#001529' : '#ffffff',
+            backgroundColor: isDark ? '#001529' : '#ffffff',
           }}
-          theme={themeMode === 'dark' ? 'dark' : 'light'}
         >
           <Button
             type="text"
@@ -95,8 +104,8 @@ const Layout = ({ children }) => {
             <Space size="small">
               <BulbOutlined />
               <Switch
-                checked={themeMode === 'dark'}
-                onChange={toggleTheme}
+                checked={isDark}
+                onChange={handleToggle}
                 checkedChildren="暗"
                 unCheckedChildren="亮"
               />
