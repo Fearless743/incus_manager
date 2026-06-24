@@ -36,22 +36,22 @@ func (h *Handler) RegisterRoutes() http.Handler {
 	mux := http.NewServeMux()
 
 	// Public routes
-	mux.HandleFunc("POST /login", h.login)
-	mux.HandleFunc("POST /users", h.createUser)
+	mux.HandleFunc("POST /api/login", h.login)
+	mux.HandleFunc("POST /api/users", h.createUser)
 
 	// Protected routes
 	auth := middleware.Authenticate(h.authService)
-	mux.HandleFunc("POST /hosts", auth(h.addHost))
-	mux.HandleFunc("GET /hosts", auth(h.getHosts))
-	mux.HandleFunc("GET /instances", auth(h.getInstances))
-	mux.HandleFunc("POST /instances", auth(h.createInstance))
-	mux.HandleFunc("DELETE /instances/", auth(h.deleteInstance))
-	mux.HandleFunc("POST /instances/start/", auth(h.startInstance))
-	mux.HandleFunc("POST /instances/stop/", auth(h.stopInstance))
-	mux.HandleFunc("POST /share", auth(h.shareInstance))
-	mux.HandleFunc("DELETE /share/", auth(h.revokeShare))
-	mux.HandleFunc("GET /instances/images", auth(h.getImages))
-	mux.HandleFunc("GET /stats", auth(h.getStats))
+	mux.HandleFunc("POST /api/hosts", auth(h.addHost))
+	mux.HandleFunc("GET /api/hosts", auth(h.getHosts))
+	mux.HandleFunc("GET /api/instances", auth(h.getInstances))
+	mux.HandleFunc("POST /api/instances", auth(h.createInstance))
+	mux.HandleFunc("DELETE /api/instances/", auth(h.deleteInstance))
+	mux.HandleFunc("POST /api/instances/start/", auth(h.startInstance))
+	mux.HandleFunc("POST /api/instances/stop/", auth(h.stopInstance))
+	mux.HandleFunc("POST /api/share", auth(h.shareInstance))
+	mux.HandleFunc("DELETE /api/share/", auth(h.revokeShare))
+	mux.HandleFunc("GET /api/instances/images", auth(h.getImages))
+	mux.HandleFunc("GET /api/stats", auth(h.getStats))
 
 	return mux
 }

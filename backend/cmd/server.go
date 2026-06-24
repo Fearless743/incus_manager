@@ -53,9 +53,9 @@ func main() {
 		staticFileHandler()(w, r)
 	})
 
-	// API routes with StripPrefix
+	// API routes
 	apiHandler := middleware.CORSMiddleware()(middleware.LoggingMiddleware(h.RegisterRoutes()))
-	router.Handle("/api/", http.StripPrefix("/api", apiHandler))
+	router.Handle("/api/", apiHandler)
 	router.Handle("/ws", hub)
 
 	port := os.Getenv("PORT")
