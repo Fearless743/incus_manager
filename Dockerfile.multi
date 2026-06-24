@@ -32,20 +32,16 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /incus-manager ./cmd/s
 # ---- Final image ----
 FROM alpine:3.19
 
-RUN apk add --no-cache ca-certificates nginx
+RUN apk add --no-cache ca-certificates
 
 WORKDIR /root/
 
 # Copy backend binary
 COPY --from=backend-builder /incus-manager .
 
-# Copy nginx config
-COPY nginx/default.conf /etc/nginx/conf.d/default.conf
+# Copy frontend dist to serve directory
+COPY --from=frontend-builder /app/dist ./dist
 
-# Copy frontend dist to nginx html directory
-COPY --from=frontend-builder /app/dist /usr/share/nginx/html
+EXPOSE 8080
 
-EXPOSE 80
-
-# Start nginx in background, then start backend
-CMD ["sh", "-c", "nginx & /root/incus-manager"]
+CMD ["/root/incus-manager"]
