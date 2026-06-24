@@ -39,7 +39,7 @@ func (s *HostService) AddHost(name, address, certificate string, userID uint) (*
 func (s *HostService) TestHost(address, certificate string) (bool, string, error) {
 	address = normalizeAddress(address)
 	client := NewIncusClient(address, certificate, "")
-	_, err := client.doRequest("GET", "/1.0", nil)
+	err := client.Ping()
 	if err != nil {
 		return false, err.Error(), nil
 	}

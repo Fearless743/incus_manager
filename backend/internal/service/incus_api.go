@@ -22,13 +22,18 @@ type IncusClient struct {
 }
 
 func NewIncusClient(url, certPEM, keyPEM string) *IncusClient {
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	tlsConfig := &tls.Config{InsecureSkipVerify: true}
+
+	if certPEM != "" && keyPEM != "" {
+		cert, err := tls.X509KeyPair([]byte(certPEM), []byte(keyPEM))
+		if err == nil {
+			tlsConfig.Certificates = []tls.Certificate{cert}
+		}
 	}
 
 	return &IncusClient{
 		URL:      url,
-		Client:   &http.Client{Transport: tr, Timeout: 30 * time.Second},
+		Client:   &http.Client{Transport: &http.Transport{TLSClientConfig: tlsConfig}, Timeout: 30 * time.Second},
 		CertData: []byte(certPEM),
 		KeyData:  []byte(keyPEM),
 	}
@@ -57,21 +62,32 @@ func (c *IncusClient) doRequest(method, path string, body interface{}) (map[stri
 	}
 	defer resp.Body.Close()
 
-	var result map[string]interface{}
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
 
+	var result map[string]interface{}
 	if err := json.Unmarshal(bodyBytes, &result); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invalid JSON response: %s", string(bodyBytes))
 	}
 
 	if resp.StatusCode >= 400 {
-		return result, fmt.Errorf("API error: %s", string(bodyBytes))
+		return result, fmt.Errorf("API error [%d]: %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	return result, nil
+}
+
+func (c *IncusClient) Ping() error {
+	result, err := c.doRequest("GET", "/1.0", nil)
+	if err != nil {
+		return err
+	}
+	if result["type"] != "api" {
+		return fmt.Errorf("not an Incus server, got type: %s", result["type"])
+	}
+	return nil
 }
 
 func (c *IncusClient) GetInstances(project string) ([]model.Instance, error) {
