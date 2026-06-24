@@ -1,4 +1,4 @@
-ARG NODE_VERSION=18-alpine
+ARG NODE_VERSION=20-alpine
 ARG GO_VERSION=1.21-alpine
 
 FROM node:${NODE_VERSION} AS frontend-builder
@@ -48,4 +48,4 @@ COPY --from=frontend-builder /app/dist /usr/share/nginx/html
 EXPOSE 80
 
 # Start nginx in background, then start backend
-CMD sh -c 'nginx & /root/incus-manager'
+CMD ["sh", "-c", "nginx & /root/incus-manager"]
