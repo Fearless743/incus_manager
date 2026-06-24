@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"incus-manager/internal/config"
@@ -102,33 +103,35 @@ func main() {
 
 func staticFileHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" && !strings.HasPrefix(r.URL.Path, "/assets/") &&
-			!strings.HasSuffix(r.URL.Path, ".html") && !strings.HasSuffix(r.URL.Path, ".css") &&
-			!strings.HasSuffix(r.URL.Path, ".js") && !strings.HasSuffix(r.URL.Path, ".svg") {
-			http.NotFound(w, r)
-			return
+		if r.URL.Path == "/" {
+			r.URL.Path = "/index.html"
 		}
 
-		path := r.URL.Path
-		if path == "/" {
-			path = "/index.html"
+		staticExtensions := map[string]bool{
+			".html": true, ".css": true, ".js": true, ".json": true,
+			".png": true, ".jpg": true, ".jpeg": true, ".svg": true, ".ico": true, ".webp": true, ".woff": true, ".woff2": true, ".ttf": true, ".eot": true,
 		}
+		_, ext := staticExtensions[strings.ToLower(filepath.Ext(r.URL.Path))]
 
-		filePath := "/root/dist" + path
-		data, err := os.ReadFile(filePath)
-		if err != nil {
-			indexData, err2 := os.ReadFile("/root/dist/index.html")
-			if err2 != nil {
-				http.Error(w, "Not found", http.StatusNotFound)
+		if ext || strings.HasPrefix(r.URL.Path, "/assets/") {
+			filePath := "/root/dist" + r.URL.Path
+			data, err := os.ReadFile(filePath)
+			if err != nil {
+				http.NotFound(w, r)
 				return
 			}
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.Write(indexData)
+			w.Header().Set("Content-Type", getContentType(r.URL.Path))
+			w.Write(data)
 			return
 		}
 
-		w.Header().Set("Content-Type", getContentType(path))
-		w.Write(data)
+		indexData, err := os.ReadFile("/root/dist/index.html")
+		if err != nil {
+			http.Error(w, "Not found", http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write(indexData)
 	}
 }
 
