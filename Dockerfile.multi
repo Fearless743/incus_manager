@@ -1,5 +1,5 @@
 ARG NODE_VERSION=20-alpine
-ARG GO_VERSION=1.21-alpine
+ARG GO_VERSION=1.23-alpine
 
 FROM node:${NODE_VERSION} AS frontend-builder
 
