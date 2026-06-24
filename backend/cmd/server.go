@@ -45,7 +45,7 @@ func main() {
 	})
 
 	// Static files - serve frontend (public, no middleware)
-	router.Handle("GET /", staticFileHandler())
+	router.HandleFunc("/", staticFileHandler())
 
 	// API routes with StripPrefix
 	apiHandler := middleware.CORSMiddleware()(middleware.LoggingMiddleware(h.RegisterRoutes()))
