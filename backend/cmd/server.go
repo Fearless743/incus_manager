@@ -47,9 +47,10 @@ func main() {
 	// Static files - serve frontend (public, no middleware)
 	router.Handle("GET /", staticFileHandler())
 
-	// API routes (include /api/ prefix internally)
+	// API routes
 	apiHandler := middleware.CORSMiddleware()(middleware.LoggingMiddleware(h.RegisterRoutes()))
-	router.Handle("/", apiHandler)
+	router.Handle("/api/", apiHandler)
+	router.Handle("/ws", hub)
 
 	port := os.Getenv("PORT")
 	if port == "" {
