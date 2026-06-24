@@ -2,14 +2,13 @@ package service
 
 import (
 	"errors"
-	"fmt"
 
 	"gorm.io/gorm"
 	"incus-manager/internal/model"
 )
 
 type HostService struct {
-	DB   *gorm.DB
+	DB           *gorm.DB
 	IncusFactory *IncusServiceFactory
 }
 
@@ -26,13 +25,59 @@ func (s *HostService) AddHost(name, address, certificate string, userID uint) (*
 		Status:      "active",
 	}
 
-	host.Project = fmt.Sprintf("host-%s-%d", name, userID)
+	host.Project = generateProjectName(name, userID)
 
 	if err := s.DB.Create(host).Error; err != nil {
 		return nil, errors.New("failed to add host")
 	}
 
 	return host, nil
+}
+
+func (s *HostService) TestHost(address, certificate string) (bool, string, error) {
+	client := NewIncusClient(address, certificate, "")
+	_, err := client.doRequest("GET", "/1.0", nil)
+	if err != nil {
+		return false, err.Error(), nil
+	}
+	return true, "连接成功", nil
+}
+
+func (s *HostService) UpdateHost(hostID, userID uint, name, address, certificate string) (*model.Host, error) {
+	var host model.Host
+	if err := s.DB.First(&host, hostID).Error; err != nil {
+		return nil, errors.New("主机不存在")
+	}
+
+	if host.UserID != userID {
+		return nil, errors.New("无权操作")
+	}
+
+	host.Name = name
+	host.Address = address
+	host.Certificate = certificate
+	if address != "" {
+		host.Project = generateProjectName(name, userID)
+	}
+
+	if err := s.DB.Save(&host).Error; err != nil {
+		return nil, errors.New("更新主机失败")
+	}
+
+	return &host, nil
+}
+
+func (s *HostService) DeleteHost(hostID, userID uint) error {
+	var host model.Host
+	if err := s.DB.First(&host, hostID).Error; err != nil {
+		return errors.New("主机不存在")
+	}
+
+	if host.UserID != userID {
+		return errors.New("无权操作")
+	}
+
+	return s.DB.Delete(&host).Error
 }
 
 func (s *HostService) GetHostsByUser(userID uint) ([]model.Host, error) {
@@ -49,17 +94,4 @@ func (s *HostService) GetHostByID(id uint) (*model.Host, error) {
 		return nil, errors.New("host not found")
 	}
 	return &host, nil
-}
-
-func (s *HostService) DeleteHost(id, userID uint) error {
-	var host model.Host
-	if err := s.DB.First(&host, id).Error; err != nil {
-		return errors.New("host not found")
-	}
-
-	if host.UserID != userID {
-		return errors.New("access denied")
-	}
-
-	return s.DB.Delete(&host).Error
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -208,4 +209,10 @@ func (f *IncusServiceFactory) GetClient(hostID uint, address, certificate string
 	client := NewIncusClient(address, certificate, "")
 	f.clients[hostID] = client
 	return client
+}
+
+func generateProjectName(name string, userID uint) string {
+	cleanName := strings.ReplaceAll(name, " ", "-")
+	cleanName = strings.ToLower(cleanName)
+	return fmt.Sprintf("host-%s-%d", cleanName, userID)
 }

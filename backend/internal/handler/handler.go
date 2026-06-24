@@ -36,6 +36,9 @@ func NewHandler(auth *service.AuthService, user *service.UserService, host *serv
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) { h.login(w, r) }
 func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) { h.createUser(w, r) }
 func (h *Handler) AddHost(w http.ResponseWriter, r *http.Request) { h.addHost(w, r) }
+func (h *Handler) TestHost(w http.ResponseWriter, r *http.Request) { h.testHost(w, r) }
+func (h *Handler) UpdateHost(w http.ResponseWriter, r *http.Request) { h.updateHost(w, r) }
+func (h *Handler) DeleteHost(w http.ResponseWriter, r *http.Request) { h.deleteHost(w, r) }
 func (h *Handler) GetHosts(w http.ResponseWriter, r *http.Request) { h.getHosts(w, r) }
 func (h *Handler) GetInstances(w http.ResponseWriter, r *http.Request) { h.getInstances(w, r) }
 func (h *Handler) CreateInstance(w http.ResponseWriter, r *http.Request) { h.createInstance(w, r) }
@@ -112,6 +115,79 @@ func (h *Handler) addHost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, host, http.StatusCreated)
+}
+
+func (h *Handler) testHost(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Address     string `json:"address"`
+		Certificate string `json:"certificate"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	ok, msg, err := h.hostService.TestHost(req.Address, req.Certificate)
+	if err != nil {
+		writeError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if !ok {
+		writeError(w, msg, http.StatusBadGateway)
+		return
+	}
+
+	writeJSON(w, map[string]interface{}{
+		"success": true,
+		"message": msg,
+	})
+}
+
+func (h *Handler) updateHost(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r)
+	hostID := parseUint(strings.TrimPrefix(r.URL.Path, "/api/hosts/"))
+	if hostID == 0 {
+		writeError(w, "无效的主机ID", http.StatusBadRequest)
+		return
+	}
+
+	var req struct {
+		Name        string `json:"name"`
+		Address     string `json:"address"`
+		Certificate string `json:"certificate"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	host, err := h.hostService.UpdateHost(hostID, userID, req.Name, req.Address, req.Certificate)
+	if err != nil {
+		writeError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, host)
+}
+
+func (h *Handler) deleteHost(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r)
+	hostID := parseUint(strings.TrimPrefix(r.URL.Path, "/api/hosts/"))
+	if hostID == 0 {
+		writeError(w, "无效的主机ID", http.StatusBadRequest)
+		return
+	}
+
+	err := h.hostService.DeleteHost(hostID, userID)
+	if err != nil {
+		writeError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, map[string]string{"message": "主机已删除"})
 }
 
 func (h *Handler) getHosts(w http.ResponseWriter, r *http.Request) {

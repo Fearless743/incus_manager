@@ -40,6 +40,9 @@ export const userAPI = {
 
 export const hostAPI = {
   add: (name, address, certificate) => api.post('/hosts', { name, address, certificate }),
+  test: (address, certificate) => api.post('/hosts/test', { address, certificate }),
+  update: (id, data) => api.put(`/hosts/${id}`, data),
+  delete: (id) => api.delete(`/hosts/${id}`),
   getAll: () => api.get('/hosts'),
 };
 

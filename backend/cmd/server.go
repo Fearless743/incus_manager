@@ -67,6 +67,21 @@ func main() {
 			auth(h.GetHosts)(w, r)
 		}
 	})
+	router.HandleFunc("/api/hosts/test", auth(h.TestHost))
+	router.HandleFunc("/api/hosts/", func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/api/hosts/")
+		if strings.Contains(path, "/test") {
+			return
+		}
+		switch r.Method {
+		case http.MethodPut:
+			auth(h.UpdateHost)(w, r)
+		case http.MethodDelete:
+			auth(h.DeleteHost)(w, r)
+		default:
+			auth(h.GetHosts)(w, r)
+		}
+	})
 	router.HandleFunc("/api/instances", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPost:
