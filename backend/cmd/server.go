@@ -37,9 +37,9 @@ func main() {
 
 	router := http.NewServeMux()
 
-	// API routes
+	// API routes (already include /api/ prefix)
 	apiHandler := middleware.CORSMiddleware()(middleware.LoggingMiddleware(h.RegisterRoutes()))
-	router.Handle("/api/", apiHandler)
+	router.Handle("/", apiHandler)
 
 	// WebSocket
 	router.Handle("/ws", hub)
