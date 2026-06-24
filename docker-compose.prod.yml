@@ -16,9 +16,7 @@ services:
       retries: 5
 
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile.multi
+    image: ghcr.io/fearless743/incus_manager:latest
     environment:
       DATABASE_URL: postgres://user:pass@postgres:5432/incus_manager?sslmode=disable
       INCUS_URL: http://host.docker.internal:8443
