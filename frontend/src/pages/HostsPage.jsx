@@ -8,8 +8,7 @@ const HostsPage = () => {
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
   const [certificate, setCertificate] = useState('');
-  const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState(null);
+  const [connecting, setConnecting] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -31,7 +30,6 @@ const HostsPage = () => {
     setCertificate('');
     setShowForm(false);
     setEditingHost(null);
-    setTestResult(null);
   };
 
   const openEditForm = (host) => {
@@ -40,42 +38,32 @@ const HostsPage = () => {
     setAddress(host.address);
     setCertificate(host.certificate || '');
     setShowForm(true);
-    setTestResult(null);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      if (editingHost) {
-        await hostAPI.update(editingHost.id, { name, address, certificate });
+      setConnecting(true);
+      const response = await hostAPI.test(address, certificate);
+      setConnecting(false);
+      
+      if (response.data.success) {
+        if (editingHost) {
+          await hostAPI.update(editingHost.id, { name, address, certificate });
+        } else {
+          await hostAPI.add(name, address, certificate);
+        }
+        resetForm();
+        loadHosts();
       } else {
-        await hostAPI.add(name, address, certificate);
+        alert('连接测试失败：' + response.data.message);
       }
-      resetForm();
-      loadHosts();
     } catch (err) {
-      console.error('操作失败:', err);
-      setTestResult({ success: false, message: err.response?.data?.error || '操作失败' });
+      setConnecting(false);
+      alert('连接测试失败：' + (err.response?.data?.error || '无法连接到主机'));
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleTest = async () => {
-    if (!address) {
-      setTestResult({ success: false, message: '请先填写地址' });
-      return;
-    }
-    setTesting(true);
-    setTestResult(null);
-    try {
-      const response = await hostAPI.test(address, certificate);
-      setTestResult({ success: true, message: response.data.message || '连接成功' });
-    } catch (err) {
-      setTestResult({ success: false, message: err.response?.data?.error || '连接失败' });
-    } finally {
-      setTesting(false);
     }
   };
 
@@ -116,32 +104,10 @@ const HostsPage = () => {
             <label>凭证：</label>
             <textarea value={certificate} onChange={(e) => setCertificate(e.target.value)} required rows={4} style={{ width: '100%', padding: 8, border: '1px solid #ddd', borderRadius: 4, boxSizing: 'border-box', fontFamily: 'monospace', fontSize: 12 }} />
           </div>
-          
-          <div style={{ marginBottom: 15, display: 'flex', gap: 10, alignItems: 'center' }}>
-            <button 
-              type="button" 
-              onClick={handleTest} 
-              disabled={testing || !address}
-              style={{ padding: '10px 20px', backgroundColor: '#ff9800', color: 'white', border: 'none', borderRadius: 4, cursor: testing ? 'not-allowed' : 'pointer' }}
-            >
-              {testing ? '测试中...' : '🔍 测试连接'}
-            </button>
-            {testResult && (
-              <span style={{ 
-                padding: '5px 10px', 
-                borderRadius: 4, 
-                backgroundColor: testResult.success ? '#e8f5e9' : '#ffebee',
-                color: testResult.success ? '#2e7d32' : '#c62828',
-                fontSize: 13
-              }}>
-                {testResult.success ? '✅ ' : '❌ '}{testResult.message}
-              </span>
-            )}
-          </div>
 
           <div style={{ display: 'flex', gap: 10 }}>
-            <button type="submit" disabled={loading} style={{ padding: '10px 20px', backgroundColor: '#4caf50', color: 'white', border: 'none', borderRadius: 4, cursor: loading ? 'not-allowed' : 'pointer' }}>
-              {editingHost ? '保存修改' : '添加主机'}
+            <button type="submit" disabled={loading || connecting} style={{ padding: '10px 20px', backgroundColor: '#4caf50', color: 'white', border: 'none', borderRadius: 4, cursor: loading || connecting ? 'not-allowed' : 'pointer' }}>
+              {loading ? '处理中...' : connecting ? '测试连接中...' : (editingHost ? '保存' : '添加主机')}
             </button>
             <button type="button" onClick={() => resetForm()} style={{ padding: '10px 20px', backgroundColor: '#9e9e9e', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>取消</button>
           </div>
