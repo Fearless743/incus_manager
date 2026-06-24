@@ -77,11 +77,11 @@ func staticFileHandler() http.HandlerFunc {
 		}
 
 		cleanPath := path[1:]
-		filePath := "dist/" + cleanPath
+		filePath := "/root/dist/" + cleanPath
 
 		data, err := os.ReadFile(filePath)
 		if err != nil {
-			indexData, err2 := os.ReadFile("dist/index.html")
+			indexData, err2 := os.ReadFile("/root/dist/index.html")
 			if err2 != nil {
 				http.Error(w, "Not found", http.StatusNotFound)
 				return
